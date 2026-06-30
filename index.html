@@ -1,0 +1,1616 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1440">
+<title>PPE 관리시스템</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Noto Sans KR','Malgun Gothic','맑은 고딕',system-ui,sans-serif;background:#eef0f2;color:#333;font-size:13px;}
+input,select,button,textarea{font-family:inherit;}
+::-webkit-scrollbar{width:9px;height:9px;}
+::-webkit-scrollbar-thumb{background:#cbd0d6;border-radius:5px;}
+::-webkit-scrollbar-track{background:transparent;}
+button{cursor:pointer;}
+
+#app{display:flex;min-height:100vh;}
+
+/* Sidebar */
+#sidebar{width:232px;flex:none;background:#222831;display:flex;flex-direction:column;transition:width .15s;position:sticky;top:0;align-self:flex-start;height:100vh;overflow:hidden;}
+#sidebar.collapsed{width:62px;}
+.sb-logo{height:56px;display:flex;align-items:center;gap:10px;padding:0 16px;border-bottom:1px solid #313945;flex:none;}
+.sb-logo-icon{width:26px;height:26px;flex:none;background:#F5821F;border-radius:5px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px;}
+.sb-logo-text{color:#fff;font-weight:700;font-size:14px;letter-spacing:-.3px;white-space:nowrap;overflow:hidden;}
+.sb-nav{flex:1;padding:8px 0;overflow-y:auto;}
+.nav-item{display:flex;align-items:center;gap:11px;padding:11px 16px;cursor:pointer;color:#aeb6c0;background:transparent;border-left:3px solid transparent;font-weight:500;font-size:13px;transition:background .1s;user-select:none;}
+.nav-item:hover{background:rgba(255,255,255,.05);}
+.nav-item.active{color:#F5821F;background:rgba(245,130,31,.12);border-left-color:#F5821F;font-weight:700;}
+.nav-icon{width:18px;text-align:center;font-size:15px;flex:none;}
+.nav-label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sb-ver{padding:12px 16px;border-top:1px solid #313945;font-size:10.5px;color:#7a8694;white-space:nowrap;overflow:hidden;}
+
+/* Main */
+#main{flex:1;display:flex;flex-direction:column;min-width:0;}
+
+/* Topbar */
+#topbar{height:56px;flex:none;background:#fff;border-bottom:1px solid #e1e4e8;display:flex;align-items:center;padding:0 20px;gap:16px;position:sticky;top:0;z-index:5;}
+#toggle-sb{cursor:pointer;font-size:18px;color:#6b7785;width:24px;text-align:center;user-select:none;}
+.top-title{display:flex;align-items:center;gap:8px;}
+.top-marker{color:#F5821F;font-size:9px;}
+.top-title-text{font-weight:700;font-size:16px;color:#2b3138;letter-spacing:-.3px;}
+.top-spacer{flex:1;}
+.sync-chip{display:flex;align-items:center;gap:6px;font-size:11px;color:#8a93a0;padding:5px 11px;background:#f4f6f8;border-radius:20px;}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:#2f9e5b;flex:none;}
+.bell-wrap{position:relative;cursor:pointer;}
+.bell-icon{font-size:18px;color:#6b7785;}
+#bell-badge{position:absolute;top:-5px;right:-7px;min-width:16px;height:16px;padding:0 4px;background:#d63b30;color:#fff;font-size:10px;font-weight:700;border-radius:9px;display:flex;align-items:center;justify-content:center;}
+.user-wrap{display:flex;align-items:center;gap:9px;padding-left:14px;border-left:1px solid #e8eaed;}
+.user-avatar{width:32px;height:32px;border-radius:50%;background:#3a4250;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;}
+.user-name{font-size:12.5px;font-weight:700;color:#2b3138;line-height:1.25;}
+.user-role{font-size:10.5px;color:#9aa3ac;line-height:1.25;}
+
+/* Content */
+#content{flex:1;padding:18px 22px;overflow-y:auto;}
+
+/* Cards */
+.card{background:#fff;border:1px solid #e6e8eb;border-radius:5px;}
+.card-hd{display:flex;align-items:center;justify-content:space-between;padding:11px 14px;border-bottom:1px solid #eef0f2;flex-wrap:wrap;gap:8px;}
+.card-hd-left{display:flex;align-items:center;gap:7px;}
+.sec-marker{color:#F5821F;font-size:9px;}
+.sec-title{font-weight:700;font-size:14px;color:#2b3138;}
+.card-meta{font-size:11px;color:#9aa3ac;}
+
+/* Tables */
+.tbl{width:100%;border-collapse:collapse;}
+.tbl th{padding:8px 10px;background:#f2f3f5;color:#5b6671;font-weight:600;font-size:11.5px;text-align:left;border-bottom:1px solid #e6e8eb;white-space:nowrap;}
+.tbl td{padding:7px 10px;border-bottom:1px solid #f0f1f3;font-size:12.5px;color:#3b424a;}
+.tbl th.tc,.tbl td.tc{text-align:center;}
+
+/* Status badge */
+.badge{display:inline-block;padding:2px 9px;border-radius:11px;font-size:11px;font-weight:700;}
+
+/* Buttons */
+.btn-orange{padding:6px 13px;background:#F5821F;border:none;color:#fff;border-radius:4px;font-size:12px;font-weight:700;}
+.btn-orange:hover{background:#e57318;}
+.btn-orange-lg{padding:11px;background:#F5821F;border:none;color:#fff;border-radius:5px;font-size:13px;font-weight:700;width:100%;}
+.btn-orange-lg:hover{background:#e57318;}
+.btn-green{padding:6px 13px;background:#fff;border:1px solid #2f9e5b;color:#2f9e5b;border-radius:4px;font-size:12px;font-weight:700;}
+.btn-green:hover{background:#f1f8f3;}
+
+/* Form controls */
+.form-select{padding:5px 9px;border:1px solid #d8dce0;border-radius:4px;font-size:11.5px;color:#3b424a;outline:none;background:#fff;}
+.form-select:focus{border-color:#F5821F;}
+.form-input{padding:6px 9px;border:1px solid #d8dce0;border-radius:4px;font-size:12.5px;color:#3b424a;outline:none;background:#fff;}
+.form-input:focus{border-color:#F5821F;}
+.form-input-sm{width:80px;padding:6px 8px;border:1px solid #e3e6e9;border-radius:4px;font-size:12.5px;color:#3b424a;outline:none;background:#fff;}
+.form-input-sm:focus{border-color:#F5821F;}
+.form-input-full{width:100%;padding:6px 8px;border:1px solid #e3e6e9;border-radius:4px;font-size:12.5px;color:#3b424a;outline:none;background:#fff;}
+.form-input-full:focus{border-color:#F5821F;}
+
+/* Tabs */
+.tab-bar{display:flex;gap:2px;padding:10px 14px 0;border-bottom:1px solid #eef0f2;}
+.tab-item{padding:8px 16px;cursor:pointer;font-size:12.5px;font-weight:500;color:#7a8591;border-bottom:2px solid transparent;margin-bottom:-1px;user-select:none;}
+.tab-item.active{color:#F5821F;font-weight:700;border-bottom-color:#F5821F;}
+
+/* Toast */
+#toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%);background:#222831;color:#fff;padding:12px 20px;border-radius:6px;font-size:13px;font-weight:500;box-shadow:0 6px 24px rgba(0,0,0,.22);display:none;align-items:center;gap:10px;z-index:100;}
+#toast.show{display:flex;}
+
+/* Worker list */
+.worker-item{display:flex;flex-direction:column;gap:1px;padding:9px 13px;cursor:pointer;border-bottom:1px solid #f3f4f6;border-left:3px solid transparent;background:#fff;user-select:none;}
+.worker-item:hover{background:#fafbfc;}
+.worker-item.active{background:#fff6ee;border-left-color:#F5821F;}
+.worker-name{font-size:12.5px;font-weight:600;color:#2b3138;}
+.worker-item.active .worker-name{color:#F5821F;}
+.worker-meta{font-size:10.5px;color:#9aa3ac;}
+
+/* Summary cards */
+.sum-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+.sum-card{background:#fff;border:1px solid #e6e8eb;border-radius:5px;padding:15px 17px;}
+.sum-label{font-size:12px;color:#7a8591;font-weight:500;}
+.sum-val-row{display:flex;align-items:baseline;gap:5px;margin-top:9px;}
+.sum-num{font-size:32px;font-weight:800;line-height:1;}
+.sum-unit{font-size:13px;color:#9aa3ac;}
+.sum-sub{font-size:11px;color:#9aa3ac;margin-top:7px;}
+
+/* Layout helpers */
+.flex-col{display:flex;flex-direction:column;}
+.gap-14{gap:14px;}
+.two-col{display:grid;grid-template-columns:1.65fr 1fr;gap:14px;align-items:start;}
+.two-col-eq{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start;}
+.two-col-15{display:grid;grid-template-columns:1.5fr 1fr;gap:14px;align-items:start;}
+.personal-grid{display:grid;grid-template-columns:268px 1fr;gap:14px;align-items:start;}
+.ov-x{overflow-x:auto;}
+.ov-y{overflow-y:auto;}
+
+/* Empty state */
+.empty-state{padding:48px 20px;text-align:center;color:#9aa3ac;}
+.empty-state .icon{font-size:32px;margin-bottom:12px;}
+.empty-state .msg{font-size:13px;line-height:1.6;}
+
+/* Loading overlay */
+#loading-overlay{position:fixed;inset:0;background:#eef0f2;display:flex;align-items:center;justify-content:center;z-index:200;flex-direction:column;gap:16px;}
+.spinner{width:36px;height:36px;border:3px solid #e6e8eb;border-top-color:#F5821F;border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.load-msg{font-size:13px;color:#7a8591;}
+
+/* Error banner */
+#err-banner{display:none;position:fixed;top:56px;left:0;right:0;padding:10px 20px;background:#fdecea;border-bottom:1px solid #f5c6c3;color:#c0392b;font-size:12.5px;z-index:50;text-align:center;}
+</style>
+</head>
+<body>
+
+<div id="loading-overlay">
+  <div class="spinner"></div>
+  <div class="load-msg">Firestore 데이터 로딩 중…</div>
+</div>
+
+<div id="err-banner"></div>
+
+<div id="app">
+  <div id="sidebar">
+    <div class="sb-logo">
+      <div class="sb-logo-icon">P</div>
+      <div class="sb-logo-text" id="sb-title">PPE 관리시스템</div>
+    </div>
+    <nav class="sb-nav" id="sb-nav"></nav>
+    <div class="sb-ver" id="sb-ver">v3.0 · Firebase 연동</div>
+  </div>
+  <div id="main">
+    <div id="topbar">
+      <span id="toggle-sb">☰</span>
+      <div class="top-title">
+        <span class="top-marker">▶</span>
+        <span class="top-title-text" id="page-title"></span>
+      </div>
+      <div class="top-spacer"></div>
+      <div class="sync-chip">
+        <span class="sync-dot"></span>
+        출고연동 정상 · 최근 <span id="last-sync-text">-</span>
+      </div>
+      <div class="bell-wrap">
+        <span class="bell-icon">🔔</span>
+        <span id="bell-badge">0</span>
+      </div>
+      <div class="user-wrap">
+        <div class="user-avatar">P</div>
+        <div>
+          <div class="user-name">PPE 관리자</div>
+          <div class="user-role">정비 엔지니어</div>
+        </div>
+      </div>
+    </div>
+    <div id="content"></div>
+  </div>
+</div>
+
+<div id="toast">
+  <span style="width:8px;height:8px;border-radius:50%;background:#F5821F;flex:none;"></span>
+  <span id="toast-msg"></span>
+</div>
+
+<script type="module">
+import { initializeApp }          from 'https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js';
+import { getFirestore, collection, doc,
+         onSnapshot, addDoc, setDoc, updateDoc, deleteDoc,
+         writeBatch, getDocs }
+                                   from 'https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js';
+
+const WORKER_SEED_DATA = [
+{f:"PVC공장",d:"PVC생산1팀",s:"사무실",n:"강성훈",e:"199911098"},
+{f:"PVC공장",d:"PVC생산1팀",s:"사무실",n:"김창욱",e:"201103559"},
+{f:"PVC공장",d:"PVC생산1팀",s:"사무실",n:"노재욱",e:"201103562"},
+{f:"PVC공장",d:"PVC생산1팀",s:"사무실",n:"남언수",e:"201900271"},
+{f:"PVC공장",d:"PVC생산1팀",s:"사무실",n:"윤경수",e:"199141576"},
+{f:"PVC공장",d:"PVC생산1팀",s:"사무실",n:"예지현",e:"201301336"},
+{f:"PVC공장",d:"PVC생산1팀",s:"SPVC/MPS-1",n:"최주섭",e:"199140633"},
+{f:"PVC공장",d:"PVC생산1팀",s:"SPVC/MPS-1",n:"박영진",e:"199140611"},
+{f:"PVC공장",d:"PVC생산1팀",s:"SPVC/MPS-1",n:"김세겸",e:"199050274"},
+{f:"PVC공장",d:"PVC생산1팀",s:"SPVC/MPS-1",n:"김인섭",e:"199140666"},
+{f:"PVC공장",d:"PVC생산1팀",s:"SPVC/MPS-1",n:"이치목",e:"199340623"},
+{f:"PVC공장",d:"PVC생산1팀",s:"SPVC/MPS-1",n:"김병필",e:"199540016"},
+{f:"PVC공장",d:"PVC생산1팀",s:"SPVC/MPS-1",n:"안영식",e:"199142486"},
+{f:"PVC공장",d:"PVC생산1팀",s:"SPVC/MPS-1",n:"이재우",e:"199440454"},
+{f:"PVC공장",d:"PVC생산1팀",s:"SPVC/MPS-1",n:"정인조",e:"199540484"},
+{f:"PVC공장",d:"PVC생산1팀",s:"SPVC/MPS-1",n:"현광석",e:"199141230"},
+{f:"PVC공장",d:"PVC생산1팀",s:"SPVC/MPS-1",n:"박성찬",e:"199540134"},
+{f:"PVC공장",d:"PVC생산1팀",s:"SPVC/MPS-1",n:"김진철",e:"199640201"},
+{f:"PVC공장",d:"PVC생산1팀",s:"SPVC/MPS-1",n:"이근호",e:"200540007"},
+{f:"PVC공장",d:"PVC생산1팀",s:"SPVC/MPS-1",n:"윤현종",e:"201340026"},
+{f:"PVC공장",d:"PVC생산1팀",s:"SPVC/MPS-1",n:"주현우",e:"200540006"},
+{f:"PVC공장",d:"PVC생산1팀",s:"SPVC/MPS-1",n:"김형환",e:"201240277"},
+{f:"PVC공장",d:"PVC생산1팀",s:"SPVC/MPS-1",n:"정성모",e:"201340032"},
+{f:"PVC공장",d:"PVC생산1팀",s:"SPVC/MPS-1",n:"서다현",e:"201540066"},
+{f:"PVC공장",d:"PVC생산1팀",s:"SPVC/MPS-1",n:"김경목",e:"201340037"},
+{f:"PVC공장",d:"PVC생산1팀",s:"SPVC/MPS-1",n:"김민태",e:"200540020"},
+{f:"PVC공장",d:"PVC생산1팀",s:"SPVC/MPS-1",n:"송승민",e:"201640063"},
+{f:"PVC공장",d:"PVC생산1팀",s:"SPVC/MPS-1",n:"윤성준",e:"201640070"},
+{f:"PVC공장",d:"PVC생산1팀",s:"SPVC/MPS-1",n:"최정재",e:"202240032"},
+{f:"PVC공장",d:"PVC생산1팀",s:"SPVC/MPS-1",n:"최보규",e:"202240031"},
+{f:"PVC공장",d:"PVC생산1팀",s:"SPVC/MPS-1",n:"노시환",e:"202440026"},
+{f:"PVC공장",d:"PVC생산1팀",s:"SPVC/MPS-1",n:"박성협",e:"202440031"},
+{f:"PVC공장",d:"PVC생산1팀",s:"SPVC/MPS-1",n:"윤강현",e:"202440038"},
+{f:"PVC공장",d:"PVC생산1팀",s:"SPVC/MPS-1",n:"김민석",e:"202340071"},
+{f:"PVC공장",d:"PVC생산1팀",s:"SPVC/MPS-1",n:"김민수",e:"202540011"},
+{f:"PVC공장",d:"PVC생산1팀",s:"SPVC/MPS-1",n:"김수범",e:"202440040"},
+{f:"PVC공장",d:"PVC생산1팀",s:"SPVC/MPS-1",n:"임성권",e:"202540022"},
+{f:"PVC공장",d:"PVC생산1팀",s:"SPVC/MPS-1",n:"이경훈",e:"202540025"},
+{f:"PVC공장",d:"PVC생산1팀",s:"SPVC/MPS-1",n:"김남태",e:"198650202"},
+{f:"PVC공장",d:"PVC생산1팀",s:"PVC-1",n:"김영진",e:"198750055"},
+{f:"PVC공장",d:"PVC생산1팀",s:"PVC-1",n:"김재범",e:"199050241"},
+{f:"PVC공장",d:"PVC생산1팀",s:"PVC-1",n:"이상호",e:"198851161"},
+{f:"PVC공장",d:"PVC생산1팀",s:"PVC-1",n:"이만승",e:"199041524"},
+{f:"PVC공장",d:"PVC생산1팀",s:"PVC-1",n:"박재영",e:"199540042"},
+{f:"PVC공장",d:"PVC생산1팀",s:"PVC-1",n:"전재덕",e:"199140751"},
+{f:"PVC공장",d:"PVC생산1팀",s:"PVC-1",n:"이재홍",e:"199241595"},
+{f:"PVC공장",d:"PVC생산1팀",s:"PVC-1",n:"이상대",e:"199540635"},
+{f:"PVC공장",d:"PVC생산1팀",s:"PVC-1",n:"김재명",e:"199540624"},
+{f:"PVC공장",d:"PVC생산1팀",s:"PVC-1",n:"장영욱",e:"199640234"},
+{f:"PVC공장",d:"PVC생산1팀",s:"PVC-1",n:"김장영",e:"199141241"},
+{f:"PVC공장",d:"PVC생산1팀",s:"PVC-1",n:"손문성",e:"200540022"},
+{f:"PVC공장",d:"PVC생산1팀",s:"PVC-1",n:"허재명",e:"199541221"},
+{f:"PVC공장",d:"PVC생산1팀",s:"PVC-1",n:"한만섭",e:"201240028"},
+{f:"PVC공장",d:"PVC생산1팀",s:"PVC-1",n:"박용현",e:"201240030"},
+{f:"PVC공장",d:"PVC생산1팀",s:"PVC-1",n:"김완규",e:"201540061"},
+{f:"PVC공장",d:"PVC생산1팀",s:"PVC-1",n:"김배지",e:"202340072"},
+{f:"PVC공장",d:"PVC생산1팀",s:"PVC-1",n:"박지훈",e:"202440028"},
+{f:"PVC공장",d:"PVC생산1팀",s:"PVC-1",n:"조준혁",e:"202540006"},
+{f:"PVC공장",d:"PVC생산1팀",s:"PVC-1",n:"김태우",e:"201840029"},
+{f:"PVC공장",d:"PVC생산1팀",s:"PVC-1",n:"김동래",e:"202540024"},
+{f:"PVC공장",d:"PVC생산1팀",s:"PVC-1",n:"최진섭",e:"199440476"},
+{f:"PVC공장",d:"PVC생산1팀",s:"PVC-1",n:"이재용",e:"202540005"},
+{f:"PVC공장",d:"PVC생산1팀",s:"PVC-1",n:"이상훈",e:"202540001"},
+{f:"PVC공장",d:"PVC생산1팀",s:"PVC-1",n:"정순호",e:"201340151"},
+{f:"PVC공장",d:"PVC생산1팀",s:"UTILITY",n:"심영진",e:"199142442"},
+{f:"PVC공장",d:"PVC생산1팀",s:"UTILITY",n:"서병조",e:"199541265"},
+{f:"PVC공장",d:"PVC생산1팀",s:"UTILITY",n:"변용수",e:"199140725"},
+{f:"PVC공장",d:"PVC생산1팀",s:"UTILITY",n:"안창원",e:"199142420"},
+{f:"PVC공장",d:"PVC생산1팀",s:"UTILITY",n:"이윤환",e:"201340050"},
+{f:"PVC공장",d:"PVC생산1팀",s:"UTILITY",n:"김명호",e:"199140736"},
+{f:"PVC공장",d:"PVC생산1팀",s:"UTILITY",n:"이재훈",e:"201340039"},
+{f:"PVC공장",d:"PVC생산1팀",s:"UTILITY",n:"심명곤",e:"200640004"},
+{f:"PVC공장",d:"PVC생산1팀",s:"UTILITY",n:"박경환",e:"199640223"},
+{f:"PVC공장",d:"PVC생산1팀",s:"UTILITY",n:"권오탁",e:"201240322"},
+{f:"PVC공장",d:"PVC생산1팀",s:"UTILITY",n:"오재훈",e:"202240036"},
+{f:"PVC공장",d:"PVC생산1팀",s:"UTILITY",n:"한성민",e:"202440036"},
+{f:"PVC공장",d:"PVC생산1팀",s:"UTILITY",n:"도왕기",e:"201540064"},
+{f:"PVC공장",d:"PVC생산1팀",s:"UTILITY",n:"왕현정",e:"201240029"},
+{f:"PVC공장",d:"PVC생산1팀",s:"UTILITY",n:"최병도",e:"199540613"},
+{f:"PVC공장",d:"PVC생산1팀",s:"UTILITY",n:"황진솔",e:"201540059"},
+{f:"PVC공장",d:"PVC생산2팀",s:"사무실",n:"최승혁",e:"200200640"},
+{f:"PVC공장",d:"PVC생산2팀",s:"사무실",n:"박상우",e:"201402618"},
+{f:"PVC공장",d:"PVC생산2팀",s:"사무실",n:"이윤택",e:"201300097"},
+{f:"PVC공장",d:"PVC생산2팀",s:"사무실",n:"이영섭",e:"199550446"},
+{f:"PVC공장",d:"PVC생산2팀",s:"사무실",n:"김현향",e:"202240038"},
+{f:"PVC공장",d:"PVC생산2팀",s:"사무실",n:"최정옥",e:"201302674"},
+{f:"PVC공장",d:"PVC생산2팀",s:"PVC-2/MPS",n:"권오진",e:"199041535"},
+{f:"PVC공장",d:"PVC생산2팀",s:"PVC-2/MPS",n:"윤태훈",e:"199140036"},
+{f:"PVC공장",d:"PVC생산2팀",s:"PVC-2/MPS",n:"박만원",e:"199340634"},
+{f:"PVC공장",d:"PVC생산2팀",s:"PVC-2/MPS",n:"장인구",e:"199240405"},
+{f:"PVC공장",d:"PVC생산2팀",s:"PVC-2",n:"이승재",e:"199141182"},
+{f:"PVC공장",d:"PVC생산2팀",s:"PVC-2",n:"김도년",e:"199140585"},
+{f:"PVC공장",d:"PVC생산2팀",s:"PVC-2",n:"원일호",e:"199141521"},
+{f:"PVC공장",d:"PVC생산2팀",s:"PVC-2",n:"김호철",e:"199540064"},
+{f:"PVC공장",d:"PVC생산2팀",s:"PVC-2",n:"이현주",e:"199540086"},
+{f:"PVC공장",d:"PVC생산2팀",s:"PVC-2",n:"김종선",e:"201540060"},
+{f:"PVC공장",d:"PVC생산2팀",s:"PVC-2",n:"문성은",e:"199640186"},
+{f:"PVC공장",d:"PVC생산2팀",s:"PVC-2",n:"이수조",e:"199541232"},
+{f:"PVC공장",d:"PVC생산2팀",s:"PVC-2",n:"이상수",e:"199140622"},
+{f:"PVC공장",d:"PVC생산2팀",s:"PVC-2",n:"강신승",e:"199440421"},
+{f:"PVC공장",d:"PVC생산2팀",s:"PVC-2",n:"이하늘",e:"201840095"},
+{f:"PVC공장",d:"PVC생산2팀",s:"PVC-2",n:"서윤재",e:"201540069"},
+{f:"PVC공장",d:"PVC생산2팀",s:"PVC-2",n:"차진우",e:"202440032"},
+{f:"PVC공장",d:"PVC생산2팀",s:"PVC-2",n:"강인재",e:"201540065"},
+{f:"PVC공장",d:"PVC생산2팀",s:"PVC-2",n:"옥승엽",e:"201840035"},
+{f:"PVC공장",d:"PVC생산2팀",s:"PVC-2",n:"송정수",e:"199141204"},
+{f:"PVC공장",d:"PVC생산2팀",s:"MPS",n:"이현걸",e:"199540020"},
+{f:"PVC공장",d:"PVC생산2팀",s:"MPS",n:"진영찬",e:"199640212"},
+{f:"PVC공장",d:"PVC생산2팀",s:"MPS",n:"이규석",e:"199640190"},
+{f:"PVC공장",d:"PVC생산2팀",s:"MPS",n:"조철호",e:"199440465"},
+{f:"PVC공장",d:"PVC생산2팀",s:"MPS",n:"차명구",e:"200540005"},
+{f:"PVC공장",d:"PVC생산2팀",s:"MPS",n:"강대근",e:"200840018"},
+{f:"PVC공장",d:"PVC생산2팀",s:"MPS",n:"반정현",e:"201240032"},
+{f:"PVC공장",d:"PVC생산2팀",s:"MPS",n:"곽봉주",e:"201340049"},
+{f:"PVC공장",d:"PVC생산2팀",s:"MPS",n:"박홍일",e:"199141160"},
+{f:"PVC공장",d:"PVC생산2팀",s:"MPS",n:"서완호",e:"201940063"},
+{f:"PVC공장",d:"PVC생산2팀",s:"MPS",n:"박찬국",e:"201940062"},
+{f:"PVC공장",d:"PVC생산2팀",s:"MPS",n:"최영빈",e:"201640071"},
+{f:"PVC공장",d:"PVC생산2팀",s:"MPS",n:"이힘찬",e:"202440037"},
+{f:"PVC공장",d:"PVC생산2팀",s:"MPS",n:"이주엽",e:"202440035"},
+{f:"PVC공장",d:"PVC생산2팀",s:"MPS",n:"김창훈",e:"202540003"},
+{f:"PVC공장",d:"PVC생산2팀",s:"MPS",n:"진성엽",e:"200940275"},
+{f:"PVC공장",d:"PVC생산2팀",s:"EPS/CPVC",n:"강남규",e:"199050263"},
+{f:"PVC공장",d:"PVC생산2팀",s:"EPS/CPVC",n:"이성도",e:"199140051"},
+{f:"PVC공장",d:"PVC생산2팀",s:"EPS/CPVC",n:"김택만",e:"198950863"},
+{f:"PVC공장",d:"PVC생산2팀",s:"EPS/CPVC",n:"부경환",e:"199141193"},
+{f:"PVC공장",d:"PVC생산2팀",s:"EPS/CPVC",n:"김덕준",e:"199142383"},
+{f:"PVC공장",d:"PVC생산2팀",s:"EPS/CPVC",n:"최석주",e:"199540565"},
+{f:"PVC공장",d:"PVC생산2팀",s:"EPS/CPVC",n:"정후락",e:"199440071"},
+{f:"PVC공장",d:"PVC생산2팀",s:"EPS/CPVC",n:"서득수",e:"199241606"},
+{f:"PVC공장",d:"PVC생산2팀",s:"EPS/CPVC",n:"김원대",e:"199540495"},
+{f:"PVC공장",d:"PVC생산2팀",s:"EPS/CPVC",n:"이동활",e:"201240031"},
+{f:"PVC공장",d:"PVC생산2팀",s:"EPS/CPVC",n:"현상우",e:"201140049"},
+{f:"PVC공장",d:"PVC생산2팀",s:"EPS/CPVC",n:"이문환",e:"200540002"},
+{f:"PVC공장",d:"PVC생산2팀",s:"EPS/CPVC",n:"진은동",e:"201740017"},
+{f:"PVC공장",d:"PVC생산2팀",s:"EPS/CPVC",n:"전지민",e:"201240035"},
+{f:"PVC공장",d:"PVC생산2팀",s:"EPS/CPVC",n:"유해한",e:"199540462"},
+{f:"PVC공장",d:"PVC생산2팀",s:"EPS/CPVC",n:"차민수",e:"202440013"},
+{f:"PVC공장",d:"PVC생산2팀",s:"EPS/CPVC",n:"이승진",e:"202040037"},
+{f:"PVC공장",d:"PVC생산2팀",s:"EPS/CPVC",n:"윤진수",e:"200440011"},
+{f:"PVC공장",d:"PVC생산2팀",s:"EPS/CPVC",n:"이희수",e:"201540074"},
+{f:"PVC공장",d:"PVC생산2팀",s:"EPS/CPVC",n:"이창현",e:"202540021"},
+{f:"PVC공장",d:"PVC생산2팀",s:"EPS/CPVC",n:"김민후",e:"202540016"},
+{f:"PVC공장",d:"PVC생산2팀",s:"EPS/CPVC",n:"강성진",e:"202540002"},
+{f:"PVC공장",d:"PVC생산2팀",s:"EPS/CPVC",n:"김민성",e:"202540010"},
+{f:"PVC공장",d:"PVC생산2팀",s:"EPS/CPVC",n:"이선우",e:"198850774"},
+{f:"PVC공장",d:"PVC생산2팀",s:"EPS/CPVC",n:"정석훈",e:"199540123"},
+{f:"PVC공장",d:"계전팀",s:"사무실",n:"선민욱",e:"200601479"},
+{f:"PVC공장",d:"계전팀",s:"사무실",n:"서민기",e:"201002901"},
+{f:"PVC공장",d:"계전팀",s:"사무실",n:"손병지",e:"201100547"},
+{f:"PVC공장",d:"계전팀",s:"사무실",n:"노현진",e:"202301912"},
+{f:"PVC공장",d:"계전팀",s:"사무실",n:"손상우",e:"200802167"},
+{f:"PVC공장",d:"계전팀",s:"사무실",n:"노준영",e:"201302363"},
+{f:"PVC공장",d:"계전팀",s:"사무실",n:"이대식",e:"201600102"},
+{f:"PVC공장",d:"계전팀",s:"사무실",n:"김효진",e:"201440068"},
+{f:"PVC공장",d:"계전팀",s:"계전2과",n:"이재학",e:"199440583"},
+{f:"PVC공장",d:"계전팀",s:"계전2과",n:"이재명",e:"199140084"},
+{f:"PVC공장",d:"계전팀",s:"계전2과",n:"김만호",e:"199640024"},
+{f:"PVC공장",d:"계전팀",s:"계전2과",n:"류정환",e:"200840020"},
+{f:"PVC공장",d:"계전팀",s:"계전2과",n:"김정훈",e:"201240034"},
+{f:"PVC공장",d:"계전팀",s:"계전2과",n:"임연호",e:"201540073"},
+{f:"PVC공장",d:"계전팀",s:"계전2과",n:"심진",e:"199140073"},
+{f:"PVC공장",d:"계전팀",s:"계전2과",n:"황재호",e:"200640007"},
+{f:"PVC공장",d:"계전팀",s:"계전2과",n:"배부삼",e:"201240033"},
+{f:"PVC공장",d:"계전팀",s:"계전2과",n:"오재권",e:"201240311"},
+{f:"PVC공장",d:"계전팀",s:"계전2과",n:"이기호",e:"201540067"},
+{f:"PVC공장",d:"계전팀",s:"계전2과",n:"손우주",e:"201540070"},
+{f:"PVC공장",d:"정비팀",s:"사무실",n:"김병권",e:"200700764"},
+{f:"PVC공장",d:"정비팀",s:"사무실",n:"김동욱",e:"201105776"},
+{f:"PVC공장",d:"정비팀",s:"사무실",n:"권준성",e:"201302361"},
+{f:"PVC공장",d:"정비팀",s:"사무실",n:"김철광",e:"199440572"},
+{f:"PVC공장",d:"정비팀",s:"정비2과",n:"주원근",e:"199240431"},
+{f:"PVC공장",d:"정비팀",s:"정비2과",n:"최덕호",e:"199240884"},
+{f:"PVC공장",d:"정비팀",s:"정비2과",n:"박준성",e:"200940274"},
+{f:"PVC공장",d:"정비팀",s:"정비2과",n:"황시진",e:"200940276"},
+{f:"PVC공장",d:"정비팀",s:"정비2과",n:"조유재",e:"201840040"},
+{f:"PVC공장",d:"정비팀",s:"정비2과",n:"최현진",e:"201540071"},
+{f:"PVC공장",d:"정비팀",s:"정비2과",n:"김성준",e:"202240035"},
+{f:"PVC공장",d:"정비팀",s:"정비2과",n:"류호규",e:"199140644"},
+{f:"PVC공장",d:"정비팀",s:"정비2과",n:"김형일",e:"200840023"},
+{f:"PVC공장",d:"정비팀",s:"정비2과",n:"박지우",e:"201640072"},
+{f:"PVC공장",d:"정비팀",s:"정비2과",n:"김동윤",e:"199440406"},
+{f:"PVC공장",d:"정비팀",s:"정비2과",n:"박순규",e:"201340041"},
+{f:"PVC공장",d:"정비팀",s:"정비2과",n:"김영운",e:"198550220"},
+{f:"PVC공장",d:"정비팀",s:"정비2과",n:"이형권",e:"199340612"},
+{f:"PVC공장",d:"물류팀",s:"출하 사무실",n:"이수용",e:"200801177"},
+{f:"PVC공장",d:"물류팀",s:"출하 사무실",n:"김도완",e:"200940042"},
+{f:"PVC공장",d:"물류팀",s:"출하 사무실",n:"박혁",e:"201001627"},
+{f:"PVC공장",d:"물류팀",s:"출하 사무실",n:"양봉령",e:"201040088"},
+{f:"PVC공장",d:"물류팀",s:"출하 사무실",n:"신나현",e:"201001484"},
+{f:"PVC공장",d:"물류팀",s:"출하 사무실",n:"이수정",e:"200500872"},
+{f:"PVC공장",d:"물류팀",s:"포장실",n:"박홍수",e:"199540576"},
+{f:"PVC공장",d:"물류팀",s:"포장실",n:"조제학",e:"199240416"},
+{f:"PVC공장",d:"물류팀",s:"포장실",n:"김영신",e:"199540473"},
+{f:"PVC공장",d:"물류팀",s:"포장실",n:"유영국",e:"199440432"},
+{f:"PVC공장",d:"물류팀",s:"구매자재 사무실",n:"유시환",e:"199040916"},
+{f:"PVC공장",d:"물류팀",s:"구매자재 사무실",n:"박종영",e:"199312284"},
+{f:"PVC공장",d:"물류팀",s:"구매자재 사무실",n:"정준호",e:"202140093"},
+{f:"PVC공장",d:"물류팀",s:"구매자재 사무실",n:"유승우",e:"199141602"},
+{f:"PVC공장",d:"물류팀",s:"구매자재 사무실",n:"진종형",e:"200640005"},
+{f:"PVC공장",d:"설비안전진단팀",s:"전공정",n:"이기환",e:"199440060"},
+{f:"PVC공장",d:"설비안전진단팀",s:"전공정",n:"김동진",e:"200540009"},
+{f:"PVC공장",d:"설비안전진단팀",s:"전공정",n:"이민석",e:"202540020"},
+{f:"PVC공장",d:"품질보증팀",s:"사무실",n:"조영석",e:"201904092"},
+{f:"PVC공장",d:"품질보증팀",s:"사무실",n:"서종원",e:"199519661"},
+{f:"PVC공장",d:"품질보증팀",s:"PILOP",n:"박태호",e:"199041513"},
+{f:"PVC공장",d:"품질보증팀",s:"PILOP",n:"정성기",e:"199540856"},
+{f:"PVC공장",d:"품질보증팀",s:"PILOP",n:"이진태",e:"199541254"},
+{f:"PVC공장",d:"품질보증팀",s:"PVC",n:"이형우",e:"199041550"},
+{f:"PVC공장",d:"품질보증팀",s:"PVC",n:"김영태",e:"200540001"},
+{f:"PVC공장",d:"품질보증팀",s:"PVC",n:"신기용",e:"199142475"},
+{f:"PVC공장",d:"품질보증팀",s:"PVC",n:"정철호",e:"199540532"},
+{f:"PVC공장",d:"품질보증팀",s:"PVC",n:"유헌",e:"199540543"},
+{f:"PVC공장",d:"품질보증팀",s:"PVC",n:"황보훈",e:"202240033"},
+{f:"PVC공장",d:"품질보증팀",s:"PVC",n:"박주태",e:"199640061"},
+{f:"PVC공장",d:"환경팀",s:"사무실",n:"박현수",e:"200500107"},
+{f:"PVC공장",d:"환경팀",s:"사무실",n:"조대석",e:"199517631"},
+{f:"PVC공장",d:"환경팀",s:"사무실",n:"곽진규",e:"200902314"},
+{f:"PVC공장",d:"환경팀",s:"사무실",n:"한혜지",e:"201105782"},
+{f:"PVC공장",d:"환경팀",s:"사무실",n:"천동호",e:"201304021"},
+{f:"PVC공장",d:"환경팀",s:"실험실",n:"이재성",e:"201240124"},
+{f:"PVC공장",d:"환경팀",s:"노동조합",n:"김준기",e:"199640072"},
+{f:"PVC공장",d:"공정혁신팀",s:"사무실",n:"구원만",e:"201300100"},
+{f:"PVC공장",d:"공정혁신팀",s:"사무실",n:"김상은",e:"201105804"},
+{f:"PVC공장",d:"기술교육센터",s:"사무실",n:"김종웅",e:"199413445"},
+{f:"PVC공장",d:"기술교육센터",s:"사무실",n:"임종욱",e:"199009895"},
+{f:"PVC공장",d:"기술교육센터",s:"사무실",n:"최현식",e:"201504078"},
+{f:"PVC공장",d:"PVC 생산담당",s:"사무실",n:"신석용",e:"199519716"},
+{f:"PVC공장",d:"PVC 생산담당",s:"사무실",n:"강희창",e:"199622981"},
+{f:"PVC공장",d:"PVC 생산담당",s:"사무실",n:"박상우",e:"201600086"},
+{f:"PVC공장",d:"PVC 생산담당",s:"사무실",n:"김학곤",e:"202301902"},
+{f:"PVC공장",d:"PVC 생산담당",s:"사무실",n:"정강원",e:"202103088"},
+{f:"PVC공장",d:"PVC 생산담당",s:"사무실",n:"이광선",e:"202000087"},
+{f:"PVC공장",d:"PVC 생산담당",s:"사무실",n:"노정식",e:"199622771"},
+{f:"PVC공장",d:"PVC 생산담당",s:"사무실",n:"박용준",e:"202200459"},
+{f:"PVC공장",d:"PVC 생산담당",s:"사무실",n:"강태형",e:"202301897"},
+{f:"PVC공장",d:"PVC 생산담당",s:"사무실",n:"김태하",e:"202400184"},
+{f:"PVC공장",d:"PVC 생산담당",s:"사무실",n:"강경수",e:"202301906"},
+{f:"PVC공장",d:"안전보건팀",s:"사무실",n:"황성원",e:"199413541"},
+{f:"PVC공장",d:"안전보건팀",s:"사무실",n:"남기주",e:"199142405"},
+{f:"PVC공장",d:"안전보건팀",s:"사무실",n:"이채원",e:"201040095"},
+{f:"PVC공장",d:"안전보건팀",s:"사무실",n:"최인영",e:"202440041"},
+{f:"PVC공장",d:"총무지원팀",s:"사무실",n:"이채훈",e:"199613004"},
+{f:"PVC공장",d:"총무지원팀",s:"사무실",n:"김동욱",e:"201340004"},
+{f:"PVC공장",d:"총무지원팀",s:"사무실",n:"김병호",e:"201040093"},
+{f:"PVC공장",d:"총무지원팀",s:"사무실",n:"이현주",e:"200600795"},
+{f:"PVC공장",d:"총무지원팀",s:"사무실",n:"김은나",e:"200940048"},
+{f:"울산공장",d:"PE생산팀",s:"부서장",n:"황정훈",e:"201000293"},
+{f:"울산공장",d:"PE생산팀",s:"조업과장",n:"김진훈",e:"201400147"},
+{f:"울산공장",d:"PE생산팀",s:"안전환경감독관",n:"홍승수",e:"201340088"},
+{f:"울산공장",d:"PE생산팀",s:"교대과장",n:"정동완",e:"199040835"},
+{f:"울산공장",d:"PE생산팀",s:"교대과장",n:"이성택",e:"199142022"},
+{f:"울산공장",d:"PE생산팀",s:"교대과장",n:"최문석",e:"198940783"},
+{f:"울산공장",d:"PE생산팀",s:"교대과장",n:"김정호",e:"198941015"},
+{f:"울산공장",d:"PE생산팀",s:"조정실BOARD 1",n:"김성률",e:"199340015"},
+{f:"울산공장",d:"PE생산팀",s:"조정실BOARD 1",n:"류종향",e:"199340122"},
+{f:"울산공장",d:"PE생산팀",s:"조정실BOARD 1",n:"황학선",e:"199141392"},
+{f:"울산공장",d:"PE생산팀",s:"조정실BOARD 1",n:"김규호",e:"199142033"},
+{f:"울산공장",d:"PE생산팀",s:"조정실BOARD 2",n:"손병조",e:"199440340"},
+{f:"울산공장",d:"PE생산팀",s:"조정실BOARD 2",n:"곽병욱",e:"199340096"},
+{f:"울산공장",d:"PE생산팀",s:"조정실BOARD 2",n:"최해철",e:"199340564"},
+{f:"울산공장",d:"PE생산팀",s:"조정실BOARD 2",n:"최정욱",e:"199640094"},
+{f:"울산공장",d:"PE생산팀",s:"TR-1",n:"박효민",e:"200840022"},
+{f:"울산공장",d:"PE생산팀",s:"TR-1",n:"정현우",e:"200740037"},
+{f:"울산공장",d:"PE생산팀",s:"TR-1",n:"장일",e:"199541136"},
+{f:"울산공장",d:"PE생산팀",s:"TR-1",n:"이지영",e:"200540008"},
+{f:"울산공장",d:"PE생산팀",s:"TR-3",n:"김충섭",e:"200540004"},
+{f:"울산공장",d:"PE생산팀",s:"TR-3",n:"김영수",e:"200640002"},
+{f:"울산공장",d:"PE생산팀",s:"TR-3",n:"오경민",e:"200540003"},
+{f:"울산공장",d:"PE생산팀",s:"TR-3",n:"박기진",e:"200840017"},
+{f:"울산공장",d:"PE생산팀",s:"TR-2",n:"김헌국",e:"201140045"},
+{f:"울산공장",d:"PE생산팀",s:"TR-2",n:"김진현",e:"201140043"},
+{f:"울산공장",d:"PE생산팀",s:"TR-2",n:"백승복",e:"200540021"},
+{f:"울산공장",d:"PE생산팀",s:"TR-2",n:"엄태우",e:"201140046"},
+{f:"울산공장",d:"PE생산팀",s:"정제부",n:"김남진",e:"201340045"},
+{f:"울산공장",d:"PE생산팀",s:"정제부",n:"김철환",e:"201140044"},
+{f:"울산공장",d:"PE생산팀",s:"정제부",n:"서상현",e:"201340048"},
+{f:"울산공장",d:"PE생산팀",s:"정제부",n:"김대영",e:"201240047"},
+{f:"울산공장",d:"PE생산팀",s:"MHS",n:"장지훈",e:"201540068"},
+{f:"울산공장",d:"PE생산팀",s:"MHS",n:"김준영",e:"201940051"},
+{f:"울산공장",d:"PE생산팀",s:"MHS",n:"유관준",e:"202240029"},
+{f:"울산공장",d:"PE생산팀",s:"MHS",n:"김규영",e:"201840026"},
+{f:"울산공장",d:"PE생산팀",s:"EXT/UTIL",n:"박석원",e:"201340086"},
+{f:"울산공장",d:"PE생산팀",s:"EXT/UTIL",n:"김태우",e:"202340073"},
+{f:"울산공장",d:"PE생산팀",s:"EXT/UTIL",n:"심규영",e:"202440012"},
+{f:"울산공장",d:"PE생산팀",s:"EXT/UTIL",n:"이주경",e:"202540012"},
+{f:"울산공장",d:"PE생산팀",s:"사무직",n:"박기쁨",e:"201303914"},
+{f:"울산공장",d:"VCM생산팀 1과",s:"1과 조업과장",n:"이동헌",e:"201901379"},
+{f:"울산공장",d:"VCM생산팀 1과",s:"출하담당",n:"강호철(휴직)",e:"198851290"},
+{f:"울산공장",d:"VCM생산팀 1과",s:"교대과장",n:"최인식",e:"198940665"},
+{f:"울산공장",d:"VCM생산팀 1과",s:"교대과장",n:"박기환",e:"199141451"},
+{f:"울산공장",d:"VCM생산팀 1과",s:"교대과장",n:"김소환",e:"198941004"},
+{f:"울산공장",d:"VCM생산팀 1과",s:"교대과장",n:"김성훈",e:"199040846"},
+{f:"울산공장",d:"VCM생산팀 1과",s:"조정실BOARD",n:"황인재",e:"199340063"},
+{f:"울산공장",d:"VCM생산팀 1과",s:"조정실BOARD",n:"김태선",e:"199241072"},
+{f:"울산공장",d:"VCM생산팀 1과",s:"조정실BOARD",n:"신용범",e:"199141436"},
+{f:"울산공장",d:"VCM생산팀 1과",s:"조정실BOARD",n:"윤창현",e:"199141370"},
+{f:"울산공장",d:"VCM생산팀 1과",s:"조정실BOARD",n:"김동환",e:"199540171"},
+{f:"울산공장",d:"VCM생산팀 1과",s:"VYNYl-1",n:"김봉준",e:"199640153"},
+{f:"울산공장",d:"VCM생산팀 1과",s:"VYNYl-1",n:"홍운성",e:"200740038"},
+{f:"울산공장",d:"VCM생산팀 1과",s:"VYNYl-1",n:"김기락",e:"199640105"},
+{f:"울산공장",d:"VCM생산팀 1과",s:"VYNYl-1",n:"신경술",e:"200740041"},
+{f:"울산공장",d:"VCM생산팀 1과",s:"OXY-1",n:"심진우",e:"201240043"},
+{f:"울산공장",d:"VCM생산팀 1과",s:"OXY-1",n:"이규호",e:"201340042"},
+{f:"울산공장",d:"VCM생산팀 1과",s:"OXY-1",n:"이영득",e:"201340043"},
+{f:"울산공장",d:"VCM생산팀 1과",s:"OXY-1",n:"이창형",e:"201840097"},
+{f:"울산공장",d:"VCM생산팀 1과",s:"Tank Field",n:"이경호",e:"202540013"},
+{f:"울산공장",d:"VCM생산팀 1과",s:"Tank Field",n:"신웅기",e:"201340024"},
+{f:"울산공장",d:"VCM생산팀 1과",s:"Tank Field",n:"전상민",e:"202540017"},
+{f:"울산공장",d:"VCM생산팀 1과",s:"Tank Field",n:"장기현",e:"201340031"},
+{f:"울산공장",d:"VCM 생산팀 2과",s:"부서장",n:"정연욱",e:"200300584"},
+{f:"울산공장",d:"VCM 생산팀 2과",s:"2과 조업과장",n:"김동규",e:"201702962"},
+{f:"울산공장",d:"VCM 생산팀 2과",s:"안전환경감독관",n:"김형일",e:"199041126"},
+{f:"울산공장",d:"VCM 생산팀 2과",s:"일근",n:"권원찬",e:"199141963"},
+{f:"울산공장",d:"VCM 생산팀 2과",s:"일근",n:"홍양곤",e:"199340074"},
+{f:"울산공장",d:"VCM 생산팀 2과",s:"교대과장",n:"이상훈",e:"199040393"},
+{f:"울산공장",d:"VCM 생산팀 2과",s:"교대과장",n:"최병일",e:"198940444"},
+{f:"울산공장",d:"VCM 생산팀 2과",s:"교대과장",n:"김남효",e:"198940654"},
+{f:"울산공장",d:"VCM 생산팀 2과",s:"교대과장",n:"정이식",e:"199041023"},
+{f:"울산공장",d:"VCM 생산팀 2과",s:"조정실BOARD",n:"이상범",e:"199440395"},
+{f:"울산공장",d:"VCM 생산팀 2과",s:"조정실BOARD",n:"김창배",e:"199141985"},
+{f:"울산공장",d:"VCM 생산팀 2과",s:"조정실BOARD",n:"김영만",e:"199340026"},
+{f:"울산공장",d:"VCM 생산팀 2과",s:"조정실BOARD",n:"이병훈",e:"199540182"},
+{f:"울산공장",d:"VCM 생산팀 2과",s:"조정실BOARD",n:"손현승",e:"199141381"},
+{f:"울산공장",d:"VCM 생산팀 2과",s:"조정실BOARD",n:"노태종",e:"199640131"},
+{f:"울산공장",d:"VCM 생산팀 2과",s:"조정실BOARD",n:"강보경",e:"199041340"},
+{f:"울산공장",d:"VCM 생산팀 2과",s:"조정실BOARD",n:"이채삼",e:"200540011"},
+{f:"울산공장",d:"VCM 생산팀 2과",s:"VINYL-2",n:"황희준",e:"200640017"},
+{f:"울산공장",d:"VCM 생산팀 2과",s:"VINYL-2",n:"김욱진",e:"200840021"},
+{f:"울산공장",d:"VCM 생산팀 2과",s:"VINYL-2",n:"정지훈",e:"201040014"},
+{f:"울산공장",d:"VCM 생산팀 2과",s:"VINYL-2",n:"김상웅",e:"200740040"},
+{f:"울산공장",d:"VCM 생산팀 2과",s:"OXY-2",n:"신만기",e:"201240046"},
+{f:"울산공장",d:"VCM 생산팀 2과",s:"OXY-2",n:"송민준",e:"201940052"},
+{f:"울산공장",d:"VCM 생산팀 2과",s:"OXY-2",n:"조현식",e:"201840098"},
+{f:"울산공장",d:"VCM 생산팀 2과",s:"OXY-2",n:"안효정",e:"201240042"},
+{f:"울산공장",d:"VCM 생산팀 2과",s:"EDC",n:"김홍한",e:"201340018"},
+{f:"울산공장",d:"VCM 생산팀 2과",s:"EDC",n:"이상경",e:"201240264"},
+{f:"울산공장",d:"VCM 생산팀 2과",s:"EDC",n:"이동호",e:"201240286"},
+{f:"울산공장",d:"VCM 생산팀 2과",s:"EDC",n:"최민",e:"201240218"},
+{f:"울산공장",d:"VCM 생산팀 2과",s:"소각로",n:"김덕진",e:"202440019"},
+{f:"울산공장",d:"VCM 생산팀 2과",s:"소각로",n:"신수환",e:"202440033"},
+{f:"울산공장",d:"VCM 생산팀 2과",s:"소각로",n:"안세빈",e:"202440018"},
+{f:"울산공장",d:"VCM 생산팀 2과",s:"소각로",n:"이형우",e:"201540072"},
+{f:"울산공장",d:"VCM 생산팀 2과",s:"소각로",n:"윤의진",e:"202540014"},
+{f:"울산공장",d:"VCM 생산팀 2과",s:"사무직",n:"이하린",e:"201140121"},
+{f:"울산공장",d:"PE/VCM생산담당",s:"",n:"조영영",e:"200400508"},
+{f:"울산공장",d:"PE/VCM생산담당",s:"",n:"이상윤",e:"201302355"},
+{f:"울산공장",d:"PE/VCM생산담당",s:"",n:"구민석",e:"202000083"},
+{f:"울산공장",d:"PE/VCM생산담당",s:"",n:"백승윤",e:"202400199"},
+{f:"울산공장",d:"PE/VCM생산담당",s:"",n:"조현용",e:"202103087"},
+{f:"울산공장",d:"PE/VCM생산담당",s:"",n:"김정환",e:"201900267"},
+{f:"울산공장",d:"PE/VCM생산담당",s:"",n:"김현진",e:"202200460"},
+{f:"울산공장",d:"PE/VCM생산담당",s:"",n:"석진우",e:"202300150"},
+{f:"울산공장",d:"PE/VCM생산담당",s:"",n:"신창훈",e:"199215953"},
+{f:"울산공장",d:"울산 계전팀",s:"엔지니어 PL",n:"최충훈",e:"200703128"},
+{f:"울산공장",d:"울산 계전팀",s:"엔지니어",n:"석주열",e:"201900278"},
+{f:"울산공장",d:"울산 계전팀",s:"계기1정비",n:"정용준",e:"199041432"},
+{f:"울산공장",d:"울산 계전팀",s:"계기1정비",n:"윤정환",e:"199340111"},
+{f:"울산공장",d:"울산 계전팀",s:"계기1정비",n:"박진욱",e:"200640018"},
+{f:"울산공장",d:"울산 계전팀",s:"계기1정비",n:"이상구",e:"200940273"},
+{f:"울산공장",d:"울산 계전팀",s:"계기1정비",n:"최규정",e:"202340078"},
+{f:"울산공장",d:"울산 계전팀",s:"계기1정비",n:"마승효",e:"201340038"},
+{f:"울산공장",d:"울산 계전팀",s:"계기1정비",n:"진승찬",e:"199541210"},
+{f:"울산공장",d:"울산 계전팀",s:"계기2정비",n:"박기석",e:"199041395"},
+{f:"울산공장",d:"울산 계전팀",s:"계기2정비",n:"이성택",e:"199241621"},
+{f:"울산공장",d:"울산 계전팀",s:"계기2정비",n:"김한수",e:"201340016"},
+{f:"울산공장",d:"울산 계전팀",s:"계기2정비",n:"최윤석",e:"200640006"},
+{f:"울산공장",d:"울산 계전팀",s:"계기2정비",n:"김승현",e:"199041406"},
+{f:"울산공장",d:"울산 계전팀",s:"엔지니어",n:"임창민",e:"201105787"},
+{f:"울산공장",d:"울산 계전팀",s:"엔지니어",n:"이순근",e:"202301911"},
+{f:"울산공장",d:"울산 계전팀",s:"전기1정비",n:"석승우",e:"198941096"},
+{f:"울산공장",d:"울산 계전팀",s:"전기1정비",n:"백재호",e:"200640003"},
+{f:"울산공장",d:"울산 계전팀",s:"전기1정비",n:"김도웅",e:"199440126"},
+{f:"울산공장",d:"울산 계전팀",s:"전기1정비",n:"권세득",e:"198940503"},
+{f:"울산공장",d:"울산 계전팀",s:"전기1정비",n:"이수범",e:"202340076"},
+{f:"울산공장",d:"울산 계전팀",s:"전기2정비",n:"박두철",e:"198940761"},
+{f:"울산공장",d:"울산 계전팀",s:"전기2정비",n:"박태준",e:"198940735"},
+{f:"울산공장",d:"울산 계전팀",s:"전기2정비",n:"설경우",e:"199440141"},
+{f:"울산공장",d:"울산 계전팀",s:"전기2정비",n:"이영근",e:"199041314"},
+{f:"울산공장",d:"울산 정비팀",s:"부서장",n:"손경호",e:"200400504"},
+{f:"울산공장",d:"울산 정비팀",s:"엔지니어 PL",n:"박진형",e:"201000294"},
+{f:"울산공장",d:"울산 정비팀",s:"설계/감리",n:"김호진",e:"198940470"},
+{f:"울산공장",d:"울산 정비팀",s:"설계/감리",n:"이응우",e:"200640019"},
+{f:"울산공장",d:"울산 정비팀",s:"안전환경감독관",n:"최종근",e:"199141462"},
+{f:"울산공장",d:"울산 정비팀",s:"정비1과 담당엔지니어 PL",n:"구경환",e:"200500101"},
+{f:"울산공장",d:"울산 정비팀",s:"정비1과 엔지니어",n:"이재우",e:"201904086"},
+{f:"울산공장",d:"울산 정비팀",s:"정비1과 엔지니어",n:"김재원",e:"202301910"},
+{f:"울산공장",d:"울산 정비팀",s:"기계정비",n:"김대광",e:"199140493"},
+{f:"울산공장",d:"울산 정비팀",s:"기계정비",n:"신동길",e:"198940713"},
+{f:"울산공장",d:"울산 정비팀",s:"기계정비",n:"김세진",e:"200840019"},
+{f:"울산공장",d:"울산 정비팀",s:"기계정비",n:"심상민",e:"201940049"},
+{f:"울산공장",d:"울산 정비팀",s:"기계정비",n:"서용근",e:"201240045"},
+{f:"울산공장",d:"울산 정비팀",s:"기계정비",n:"이경진",e:"199041281"},
+{f:"울산공장",d:"울산 정비팀",s:"기계정비지원",n:"마재정",e:"198940455"},
+{f:"울산공장",d:"울산 정비팀",s:"기계정비지원",n:"신형돈",e:"199541195"},
+{f:"울산공장",d:"울산 정비팀",s:"기계정비지원",n:"김동훈",e:"202340070"},
+{f:"울산공장",d:"울산 정비팀",s:"기계정비지원",n:"최종일",e:"200540012"},
+{f:"울산공장",d:"울산 정비팀",s:"기계정비지원",n:"류재언",e:"199040953"},
+{f:"울산공장",d:"울산 정비팀",s:"기계정비지원",n:"박근호",e:"200740036"},
+{f:"울산공장",d:"울산 정비팀",s:"기계정비지원",n:"정수조",e:"198940702"},
+{f:"울산공장",d:"울산 정비팀",s:"정비1과엔지니어",n:"박규태",e:"201103563"},
+{f:"울산공장",d:"울산 정비팀",s:"장치정비",n:"최동희",e:"199040964"},
+{f:"울산공장",d:"울산 정비팀",s:"장치정비",n:"류인식",e:"199141506"},
+{f:"울산공장",d:"울산 정비팀",s:"장치정비",n:"이민재",e:"202540019"},
+{f:"울산공장",d:"울산 정비팀",s:"장치정비",n:"김창수",e:"201240123"},
+{f:"울산공장",d:"울산 정비팀",s:"장치정비",n:"설광재",e:"199541206"},
+{f:"울산공장",d:"울산 정비팀",s:"장치정비",n:"조종선",e:"200440009"},
+{f:"울산공장",d:"울산 정비팀",s:"장치정비",n:"나남주",e:"201340019"},
+{f:"울산공장",d:"울산 정비팀",s:"장치정비",n:"이규선",e:"199140515"},
+{f:"울산공장",d:"울산 정비팀",s:"장치정비지원",n:"김기헌",e:"199140526"},
+{f:"울산공장",d:"울산 정비팀",s:"장치정비지원",n:"이창욱",e:"200440010"},
+{f:"울산공장",d:"울산 정비팀",s:"장치정비지원",n:"안성준",e:"199618814"},
+{f:"울산공장",d:"울산 정비팀",s:"사무직",n:"윤강은",e:"201240080"},
+{f:"울산공장",d:"설비안전진단팀",s:"엔지니어",n:"김민우",e:"201402616"},
+{f:"울산공장",d:"설비안전진단팀",s:"엔지니어",n:"이동은",e:"201907067"},
+{f:"울산공장",d:"설비안전진단팀",s:"설비검사계 과장",n:"김원진",e:"199140504"},
+{f:"울산공장",d:"설비안전진단팀",s:"검사원",n:"정영배",e:"199140541"},
+{f:"울산공장",d:"설비안전진단팀",s:"검사원",n:"김현준",e:"202340074"},
+{f:"울산공장",d:"설비안전진단팀",s:"검사원",n:"김태헌",e:"199340505"},
+{f:"울산공장",d:"품질보증팀",s:"부서장",n:"양지성",e:"200301162"},
+{f:"울산공장",d:"품질보증팀",s:"안전환경감독관",n:"이동훈",e:"199440384"},
+{f:"울산공장",d:"품질보증팀",s:"엔지니어",n:"전정민",e:"201105818"},
+{f:"울산공장",d:"품질보증팀",s:"엔지니어",n:"강민석",e:"202200455"},
+{f:"울산공장",d:"품질보증팀",s:"PE-QA",n:"김기태",e:"199040382"},
+{f:"울산공장",d:"품질보증팀",s:"PE-QA",n:"이상호",e:"199640050"},
+{f:"울산공장",d:"품질보증팀",s:"PE-QA",n:"구지훈",e:"199340085"},
+{f:"울산공장",d:"품질보증팀",s:"PE-QA",n:"정영식",e:"201140048"},
+{f:"울산공장",d:"품질보증팀",s:"PE-QA",n:"선용승",e:"202540015"},
+{f:"울산공장",d:"품질보증팀",s:"PE-QA",n:"심충섭",e:"198940923"},
+{f:"울산공장",d:"품질보증팀",s:"PE-QA",n:"이종율",e:"201340044"},
+{f:"울산공장",d:"품질보증팀",s:"PE-QA",n:"최대환",e:"199340516"},
+{f:"울산공장",d:"품질보증팀",s:"VCM-QA",n:"김명수",e:"199041115"},
+{f:"울산공장",d:"품질보증팀",s:"VCM-QA",n:"송용주",e:"199141974"},
+{f:"울산공장",d:"품질보증팀",s:"VCM-QA",n:"김영일",e:"199340052"},
+{f:"울산공장",d:"품질보증팀",s:"VCM-QA",n:"허종행",e:"199340133"},
+{f:"울산공장",d:"품질보증팀",s:"VCM-QA",n:"서원중",e:"199540193"},
+{f:"울산공장",d:"품질보증팀",s:"VCM-QA",n:"임형근",e:"200740039"},
+{f:"울산공장",d:"품질보증팀",s:"VCM-QA",n:"이동욱",e:"199541184"},
+{f:"울산공장",d:"품질보증팀",s:"사무직",n:"이채림",e:"201303050"},
+{f:"울산공장",d:"물류팀",s:"부서장",n:"김영호",e:"200201308"},
+{f:"울산공장",d:"물류팀",s:"안전환경감독관",n:"이광민",e:"198941041"},
+{f:"울산공장",d:"물류팀",s:"출하1",n:"김종천",e:"199640116"},
+{f:"울산공장",d:"물류팀",s:"출하1",n:"차성광",e:"199041292"},
+{f:"울산공장",d:"물류팀",s:"출하1",n:"편광오",e:"201040084"},
+{f:"울산공장",d:"물류팀",s:"출하1",n:"이춘근",e:"199516673"},
+{f:"울산공장",d:"물류팀",s:"출하1",n:"김희열",e:"201140112"},
+{f:"울산공장",d:"물류팀",s:"자재",n:"이장욱",e:"200600362"},
+{f:"울산공장",d:"물류팀",s:"자재",n:"김성우",e:"199141996"},
+{f:"울산공장",d:"물류팀",s:"자재",n:"임영대",e:"198940595"},
+{f:"울산공장",d:"물류팀",s:"구매",n:"고홍중",e:"199625206"},
+{f:"울산공장",d:"물류팀",s:"구매",n:"김종필",e:"199523415"},
+{f:"울산공장",d:"물류팀",s:"구매",n:"이민우",e:"201801649"},
+{f:"울산공장",d:"물류팀",s:"구매",n:"김민수",e:"200940063"},
+{f:"울산공장",d:"물류팀",s:"구매",n:"김정호",e:"200802463"},
+{f:"울산공장",d:"기술기획팀",s:"",n:"조창민",e:"201000292"},
+{f:"울산공장",d:"기술기획팀",s:"",n:"김하나",e:"200703126"},
+{f:"울산공장",d:"기술기획팀",s:"",n:"김영대",e:"201300112"},
+{f:"울산공장",d:"기술기획팀",s:"",n:"박근우",e:"202300147"},
+{f:"울산공장",d:"기술기획팀",s:"",n:"서은성",e:"200010013"},
+{f:"울산공장",d:"기술기획팀",s:"",n:"진성현",e:"201700255"},
+{f:"울산공장",d:"기술기획팀",s:"",n:"장철웅",e:"201040087"},
+{f:"울산공장",d:"기술기획팀",s:"",n:"남양지",e:"201440069"},
+{f:"울산공장",d:"기술기획팀",s:"",n:"전재홍",e:"199625346"},
+{f:"울산공장",d:"총무지원팀",s:"",n:"류시은",e:"200010755"},
+{f:"울산공장",d:"총무지원팀",s:"",n:"지선구",e:"201040092"},
+{f:"울산공장",d:"총무지원팀",s:"",n:"강득천",e:"202204318"},
+{f:"울산공장",d:"총무지원팀",s:"",n:"고경민",e:"200702782"},
+{f:"울산공장",d:"총무지원팀",s:"",n:"김은지",e:"200902431"},
+{f:"울산공장",d:"총무지원팀",s:"",n:"김정연",e:"202240037"},
+{f:"울산공장",d:"총무지원팀",s:"",n:"이은정",e:"200400326"},
+{f:"울산공장",d:"총무지원팀",s:"",n:"송봉규",e:"200500641"},
+{f:"울산공장",d:"총무지원팀",s:"",n:"김인정",e:"201004304"},
+{f:"울산공장",d:"총무지원팀",s:"",n:"안태환",e:"199514341"},
+{f:"울산공장",d:"총무지원팀",s:"",n:"하만화",e:"201102798"},
+{f:"울산공장",d:"총무지원팀",s:"",n:"김창섭",e:"201104870"},
+{f:"울산공장",d:"총무지원팀",s:"",n:"김영리",e:"201140092"},
+{f:"울산공장",d:"울산 환경팀",s:"",n:"홍상영",e:"200801458"},
+{f:"울산공장",d:"울산 환경팀",s:"",n:"홍중걸",e:"199041060"},
+{f:"울산공장",d:"울산 환경팀",s:"",n:"김기남",e:"201600076"}
+];
+
+
+// ─── Firebase init ────────────────────────────────────────────────────────────
+const firebaseConfig = {
+  apiKey:            'AIzaSyC7hCGQHvEInHuAFf2y1RYPO28Cgmb3u0c',
+  authDomain:        'ppe-management-system-e74aa.firebaseapp.com',
+  projectId:         'ppe-management-system-e74aa',
+  storageBucket:     'ppe-management-system-e74aa.firebasestorage.app',
+  messagingSenderId: '330803440365',
+  appId:             '1:330803440365:web:a44adf0d00bdbe0171bae4',
+};
+const fbApp = initializeApp(firebaseConfig);
+const db    = getFirestore(fbApp);
+
+// ─── helpers ──────────────────────────────────────────────────────────────────
+const esc = s => String(s == null ? '' : s)
+  .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const addMonths = (d, m) => { const x = new Date(d); x.setMonth(x.getMonth() + m); return x; };
+const fmtDate   = d => { const dt = new Date(d); const y = dt.getFullYear(), mo = String(dt.getMonth()+1).padStart(2,'0'), da = String(dt.getDate()).padStart(2,'0'); return y+'-'+mo+'-'+da; };
+const fmtNow    = () => { const n = new Date(); return fmtDate(n) + ' ' + String(n.getHours()).padStart(2,'0') + ':' + String(n.getMinutes()).padStart(2,'0'); };
+const today     = () => { const d = new Date(); d.setHours(0,0,0,0); return d; };
+
+// ─── state ────────────────────────────────────────────────────────────────────
+const state = {
+  // Firestore data
+  ppeTypes:     [],   // [{id, name, months, alarmDays, note}]
+  workers:      [],   // [{id, name, dept, factory, subOrg}]
+  records:      [],   // [{id, workerId, typeId, qty, issueDate, outNo, createdAt}]
+  alarmHistory: [],   // [{id, target, dept, ppe, date, ch, reason, color, bg}]
+  syncLog:      [],   // [{id, time, type, count, detail, status}]
+  // Settings (single doc settings/main)
+  pre1: 30, pre2: 7, chEmail: true, chSms: true, chApp: false,
+  lastSync: '-', shipSeq: 0,
+  // UI state (not persisted)
+  screen: 'dashboard',
+  selectedWorkerId: null,
+  deptTab: null,
+  collapsed: false,
+  searchPersonal: '',
+  selFactory: 'all', selDept: 'all', selSubOrg: 'all',
+  alarmStatus: 'all', alarmDept: 'all',
+  flashId: null,
+};
+
+// ─── loading tracking ─────────────────────────────────────────────────────────
+const loaded = { ppeTypes:false, workers:false, records:false, alarmHistory:false, syncLog:false, settings:false };
+let appReady = false;
+
+function checkReady() {
+  if (appReady) return;
+  if (!Object.values(loaded).every(Boolean)) return;
+  appReady = true;
+  // pick sensible UI defaults
+  if (!state.selectedWorkerId && state.workers.length > 0) state.selectedWorkerId = state.workers[0].id;
+  const depts = getDepts();
+  if (!state.deptTab || !depts.includes(state.deptTab)) state.deptTab = depts[0] || null;
+  document.getElementById('loading-overlay').style.display = 'none';
+  renderAll();
+}
+
+// ─── debounced re-render ──────────────────────────────────────────────────────
+let renderTimer = null;
+function scheduleRender(fromCollection) {
+  // Don't disrupt inline editing on the master screen
+  if (appReady && state.screen === 'master' && fromCollection === 'ppeTypes') return;
+  clearTimeout(renderTimer);
+  renderTimer = setTimeout(() => { if (appReady) renderAll(); }, 40);
+}
+
+// ─── Firestore listeners ──────────────────────────────────────────────────────
+onSnapshot(collection(db, 'ppeTypes'), snap => {
+  state.ppeTypes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  loaded.ppeTypes = true;
+  checkReady();
+  scheduleRender('ppeTypes');
+}, err => showErr('ppeTypes: ' + err.message));
+
+onSnapshot(collection(db, 'workers'), snap => {
+  state.workers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  if (!state.selectedWorkerId && state.workers.length > 0) state.selectedWorkerId = state.workers[0].id;
+  const depts = getDepts();
+  if (state.deptTab && !depts.includes(state.deptTab)) state.deptTab = depts[0] || null;
+  if (!state.deptTab && depts.length > 0) state.deptTab = depts[0];
+  loaded.workers = true;
+  checkReady();
+  scheduleRender('workers');
+}, err => showErr('workers: ' + err.message));
+
+onSnapshot(collection(db, 'records'), snap => {
+  state.records = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  loaded.records = true;
+  checkReady();
+  scheduleRender('records');
+}, err => showErr('records: ' + err.message));
+
+onSnapshot(collection(db, 'alarmHistory'), snap => {
+  state.alarmHistory = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+    .sort((a,b) => a.date < b.date ? 1 : -1);
+  loaded.alarmHistory = true;
+  checkReady();
+  scheduleRender('alarmHistory');
+}, err => showErr('alarmHistory: ' + err.message));
+
+onSnapshot(collection(db, 'syncLog'), snap => {
+  state.syncLog = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+    .sort((a,b) => a.createdAt < b.createdAt ? 1 : -1);
+  loaded.syncLog = true;
+  checkReady();
+  scheduleRender('syncLog');
+}, err => showErr('syncLog: ' + err.message));
+
+onSnapshot(doc(db, 'settings', 'main'), snap => {
+  if (snap.exists()) {
+    const d = snap.data();
+    state.pre1 = d.pre1 ?? 30;  state.pre2 = d.pre2 ?? 7;
+    state.chEmail = d.chEmail ?? true; state.chSms = d.chSms ?? true; state.chApp = d.chApp ?? false;
+    state.lastSync = d.lastSync ?? '-'; state.shipSeq = d.shipSeq ?? 0;
+  }
+  loaded.settings = true;
+  checkReady();
+  scheduleRender('settings');
+}, err => showErr('settings: ' + err.message));
+
+// ─── error banner ─────────────────────────────────────────────────────────────
+function showErr(msg) {
+  const b = document.getElementById('err-banner');
+  b.textContent = '⚠ Firestore 오류: ' + msg;
+  b.style.display = 'block';
+  setTimeout(() => b.style.display = 'none', 6000);
+}
+
+// ─── computed helpers ─────────────────────────────────────────────────────────
+function getDepts() {
+  return [...new Set(state.workers.map(w => w.dept))].sort();
+}
+
+function derive(r) {
+  const TODAY = today();
+  const t = state.ppeTypes.find(x => x.id === r.typeId) || { id:r.typeId, name:r.typeId, months:12, alarmDays:14 };
+  const w = state.workers.find(x => x.id === r.workerId) || { id:r.workerId, name:'-', dept:'-', factory:'-', subOrg:'-' };
+  const issue  = new Date(r.issueDate);
+  const expiry = addMonths(issue, t.months);
+  const daysLeft = Math.floor((expiry - TODAY) / 86400000);
+  let status, label, color, bg, dot;
+  if (daysLeft < 0)               { status='expired';  label='경과'; color='#d63b30'; bg='#fdecea'; dot='#d63b30'; }
+  else if (daysLeft<=t.alarmDays) { status='imminent'; label='임박'; color='#cf7012'; bg='#fff3e3'; dot='#F5821F'; }
+  else                            { status='normal';   label='정상'; color='#6b7785'; bg='#f1f3f5'; dot='#aab2bb'; }
+  const dLeftText = daysLeft < 0 ? Math.abs(daysLeft)+'일 경과' : daysLeft+'일 남음';
+  return { ...r, typeName:t.name, dept:w.dept, factory:w.factory, subOrg:w.subOrg, name:w.name,
+    issueStr:fmtDate(issue), expiryStr:fmtDate(expiry), daysLeft, dLeftText, status, label, color, bg, dot };
+}
+
+function computed() {
+  const allDerived = state.records.map(derive)
+    .sort((a,b) => a.issueDate < b.issueDate ? 1 : a.issueDate > b.issueDate ? -1 : 0);
+  const curMap = {};
+  state.records.forEach(r => {
+    const k = r.workerId+'|'+r.typeId;
+    if (!curMap[k] || r.issueDate > curMap[k].issueDate) curMap[k] = r;
+  });
+  const current   = Object.values(curMap).map(derive);
+  const curByKey  = {};
+  current.forEach(r => { curByKey[r.workerId+'|'+r.typeId] = r; });
+  const imminent  = current.filter(r => r.status === 'imminent');
+  const expired   = current.filter(r => r.status === 'expired');
+  const ym        = fmtDate(new Date()).slice(0,7);                    // YYYY-MM
+  const thisMonth = state.records.filter(r => r.issueDate && r.issueDate.startsWith(ym));
+  const required  = ['helmet','shoes','goggle'];
+  const notRec    = [];
+  state.workers.forEach(w => {
+    required.forEach(tid => {
+      if (!state.records.some(r => r.workerId===w.id && r.typeId===tid)) notRec.push({w,tid});
+    });
+  });
+  return { allDerived, current, curByKey, imminent, expired, thisMonth, notRec,
+           bellCount: imminent.length + expired.length };
+}
+
+// ─── toast ────────────────────────────────────────────────────────────────────
+let toastTimer = null;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  document.getElementById('toast-msg').textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 3500);
+}
+
+// ─── sidebar & topbar ─────────────────────────────────────────────────────────
+const menuDef = [
+  ['dashboard','대시보드',         '▤'],
+  ['personal', '개인별 지급대장',  '☰'],
+  ['dept',     '부서별 지급대장',  '▦'],
+  ['alarm',    '사용기한/알람 관리','◷'],
+  ['master',   '보호구 기준정보',  '◈'],
+  ['settings', '설정',             '⚙'],
+];
+const titles = {
+  dashboard:'대시보드', personal:'개인별 지급대장', dept:'부서별 지급대장',
+  alarm:'사용기한 / 알람 관리', master:'보호구 기준정보', settings:'설정'
+};
+
+function updateSidebar() {
+  document.getElementById('sb-nav').innerHTML = menuDef.map(([id, label, icon]) =>
+    `<div class="nav-item${state.screen===id?' active':''}" data-nav="${id}">
+       <span class="nav-icon">${icon}</span>
+       <span class="nav-label">${label}</span>
+     </div>`).join('');
+  const sb = document.getElementById('sidebar');
+  sb.classList.toggle('collapsed', state.collapsed);
+  document.getElementById('sb-title').style.display = state.collapsed ? 'none' : '';
+  document.getElementById('sb-ver').style.opacity  = state.collapsed ? '0' : '1';
+}
+
+function updateTopbar() {
+  const c = computed();
+  document.getElementById('page-title').textContent  = titles[state.screen];
+  document.getElementById('last-sync-text').textContent = state.lastSync;
+  document.getElementById('bell-badge').textContent  = c.bellCount;
+}
+
+function renderAll() {
+  updateSidebar();
+  updateTopbar();
+  renderScreen();
+}
+
+// ─── EMPTY STATE helper ───────────────────────────────────────────────────────
+function emptyState(icon, msg) {
+  return `<div class="empty-state"><div class="icon">${icon}</div><div class="msg">${msg}</div></div>`;
+}
+
+// ─── DASHBOARD ────────────────────────────────────────────────────────────────
+function renderDashboard() {
+  const c = computed();
+  const depts = getDepts();
+  const ym = fmtDate(new Date()).slice(0, 7);
+  const summary = [
+    { label:'만료 임박',    value:c.imminent.length,   sub:'알람 기준일 이내',   accent:'#F5821F', numColor:'#F5821F' },
+    { label:'만료 경과',    value:c.expired.length,    sub:'즉시 교체 필요',     accent:'#d63b30', numColor:'#d63b30' },
+    { label:'미수령',       value:c.notRec.length,     sub:'필수 보호구 미지급', accent:'#8a93a0', numColor:'#3b424a' },
+    { label:'이번 달 지급', value:c.thisMonth.length,  sub:ym+' 누적',           accent:'#3b8f5a', numColor:'#2f7d4d' },
+  ];
+  const statusDefs = [
+    {key:'imminent',label:'임박',color:'#F5821F'},
+    {key:'expired', label:'경과',color:'#d63b30'},
+    {key:'normal',  label:'정상',color:'#aab2bb'},
+  ];
+  const deptGrid = statusDefs.map(sd => ({
+    ...sd,
+    cells: depts.map(dp => {
+      const cnt = c.current.filter(r => r.dept===dp && r.status===sd.key).length;
+      const hot = sd.key !== 'normal' && cnt > 0;
+      return { cnt, color: hot ? sd.color : '#9aa3ac', weight: hot ? '800':'500' };
+    }),
+    total: c.current.filter(r => r.status===sd.key).length,
+  }));
+  const recentList   = c.allDerived.slice(0,9).map(r => ({...r, isNew: r.id===state.flashId}));
+  const todayAlarms  = c.current.filter(r => r.status==='imminent'||r.status==='expired')
+    .sort((a,b) => a.daysLeft - b.daysLeft).slice(0,12);
+
+  return `
+<div class="flex-col gap-14">
+  <div class="sum-grid">
+    ${summary.map(s=>`
+    <div class="sum-card" style="border-top:3px solid ${s.accent};">
+      <div class="sum-label">${s.label}</div>
+      <div class="sum-val-row"><span class="sum-num" style="color:${s.numColor};">${s.value}</span><span class="sum-unit">건</span></div>
+      <div class="sum-sub">${s.sub}</div>
+    </div>`).join('')}
+  </div>
+  <div class="two-col">
+    <div class="flex-col gap-14">
+      <div class="card">
+        <div class="card-hd">
+          <div class="card-hd-left"><span class="sec-marker">▶</span><span class="sec-title">부서별 사용기한 현황</span></div>
+          <span class="card-meta">기준일 ${fmtDate(new Date())} · 최신 지급 기준</span>
+        </div>
+        ${depts.length === 0
+          ? emptyState('🏭', '부서 데이터가 없습니다.<br>Firestore <b>workers</b> 컬렉션에 작업자를 추가해주세요.')
+          : `<div class="ov-x"><table class="tbl">
+          <thead><tr>
+            <th style="width:96px;">상태 ＼ 부서</th>
+            ${depts.map(dp=>`<th class="tc">${esc(dp)}</th>`).join('')}
+            <th class="tc" style="background:#ebedf0;font-weight:700;">합계</th>
+          </tr></thead>
+          <tbody>
+            ${deptGrid.map(row=>`<tr>
+              <td><span class="badge" style="color:#fff;background:${row.color};">${esc(row.label)}</span></td>
+              ${row.cells.map(cell=>`<td class="tc" style="font-size:15px;font-weight:${cell.weight};color:${cell.color};">${cell.cnt}</td>`).join('')}
+              <td class="tc" style="font-size:15px;font-weight:800;color:${row.color};background:#fafbfc;">${row.total}</td>
+            </tr>`).join('')}
+          </tbody></table></div>`}
+      </div>
+      <div class="card">
+        <div class="card-hd">
+          <div class="card-hd-left"><span class="sec-marker">▶</span><span class="sec-title">최근 지급 내역</span></div>
+          <span class="card-meta">출고 데이터 자동 반영 · 최신순</span>
+        </div>
+        ${recentList.length === 0
+          ? emptyState('📋', '지급 내역이 없습니다.')
+          : `<div class="ov-x"><table class="tbl">
+          <thead><tr><th>작업자</th><th>보호구</th><th>지급일</th><th>만료예정일</th><th>상태</th><th>출고번호</th></tr></thead>
+          <tbody>
+            ${recentList.map(r=>`<tr style="background:${r.isNew?'#fff8ef':'#fff'};">
+              <td style="white-space:nowrap;">
+                <div style="font-size:12.5px;font-weight:600;color:#2b3138;">${esc(r.name)}${r.isNew?'<span style="margin-left:5px;font-size:9px;font-weight:800;color:#fff;background:#F5821F;padding:1px 5px;border-radius:3px;">NEW</span>':''}</div>
+                <div style="font-size:10.5px;color:#9aa3ac;">${esc(r.dept)}</div>
+              </td>
+              <td>${esc(r.typeName)}</td>
+              <td>${esc(r.issueStr)}</td>
+              <td>${esc(r.expiryStr)}</td>
+              <td><span class="badge" style="color:${r.color};background:${r.bg};">${esc(r.label)}</span></td>
+              <td style="font-size:11px;color:#9aa3ac;">${esc(r.outNo)}</td>
+            </tr>`).join('')}
+          </tbody></table></div>`}
+      </div>
+    </div>
+    <div class="card" style="align-self:stretch;">
+      <div class="card-hd">
+        <div class="card-hd-left"><span class="sec-marker">▶</span><span class="sec-title">오늘의 알람</span></div>
+        <span style="font-size:11px;font-weight:700;color:#d63b30;">${c.bellCount}건</span>
+      </div>
+      <div style="max-height:540px;overflow-y:auto;">
+        ${todayAlarms.length === 0
+          ? emptyState('✅', '알람 없음')
+          : todayAlarms.map(a=>`
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 13px;border-bottom:1px solid #f0f1f3;">
+          <span style="width:8px;height:8px;border-radius:50%;background:${a.dot};flex:none;"></span>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:12.5px;color:#2b3138;font-weight:600;">${esc(a.name)} <span style="font-weight:400;color:#9aa3ac;font-size:10.5px;">${esc(a.dept)}</span></div>
+            <div style="font-size:11.5px;color:#7a8591;">${esc(a.typeName)}</div>
+          </div>
+          <div style="text-align:right;flex:none;">
+            <span class="badge" style="color:${a.color};background:${a.bg};">${esc(a.label)}</span>
+            <div style="font-size:10.5px;color:#9aa3ac;margin-top:3px;">${esc(a.dLeftText)}</div>
+          </div>
+        </div>`).join('')}
+      </div>
+    </div>
+  </div>
+</div>`;
+}
+
+// ─── PERSONAL LEDGER ──────────────────────────────────────────────────────────
+function renderPersonal() {
+  const q = state.searchPersonal.trim();
+  const factoryOptions = [...new Set(state.workers.map(w => w.factory))].sort();
+  const deptOptions    = [...new Set(state.workers
+    .filter(w => state.selFactory==='all'||w.factory===state.selFactory).map(w => w.dept))].sort();
+  const subOrgOptions  = [...new Set(state.workers
+    .filter(w => (state.selFactory==='all'||w.factory===state.selFactory) &&
+                 (state.selDept==='all'||w.dept===state.selDept)).map(w => w.subOrg))].sort();
+  const filteredWorkers = state.workers.filter(w =>
+    (state.selFactory==='all'||w.factory===state.selFactory) &&
+    (state.selDept==='all'||w.dept===state.selDept) &&
+    (state.selSubOrg==='all'||w.subOrg===state.selSubOrg) &&
+    (!q || w.name.includes(q) || w.id.toLowerCase().includes(q.toLowerCase()))
+  );
+  const selW = (state.selectedWorkerId && state.workers.find(w => w.id===state.selectedWorkerId)) ||
+               filteredWorkers[0] || null;
+  const personalRecords = selW ? (() => {
+    const wcur = {};
+    state.records.filter(r => r.workerId===selW.id)
+      .forEach(r => { if (!wcur[r.typeId]||r.issueDate>wcur[r.typeId].issueDate) wcur[r.typeId]=r; });
+    return state.ppeTypes.map(t => wcur[t.id]).filter(Boolean).map(derive);
+  })() : [];
+  const selImminent = personalRecords.filter(r=>r.status==='imminent').length;
+  const selExpired  = personalRecords.filter(r=>r.status==='expired').length;
+
+  return `
+<div class="personal-grid">
+  <div class="card">
+    <div class="card-hd"><div class="card-hd-left"><span class="sec-marker">▶</span><span class="sec-title">작업자 선택</span></div></div>
+    <div style="padding:11px 12px;border-bottom:1px solid #f0f1f3;display:flex;flex-direction:column;gap:7px;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="width:52px;flex:none;font-size:11px;font-weight:600;color:#9aa3ac;">공장</span>
+        <select class="form-select" style="flex:1;" id="sel-factory">
+          <option value="all">전체</option>
+          ${factoryOptions.map(o=>`<option value="${esc(o)}"${state.selFactory===o?' selected':''}>${esc(o)}</option>`).join('')}
+        </select>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="width:52px;flex:none;font-size:11px;font-weight:600;color:#9aa3ac;">부서</span>
+        <select class="form-select" style="flex:1;" id="sel-dept-filter">
+          <option value="all">전체</option>
+          ${deptOptions.map(o=>`<option value="${esc(o)}"${state.selDept===o?' selected':''}>${esc(o)}</option>`).join('')}
+        </select>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="width:52px;flex:none;font-size:11px;font-weight:600;color:#9aa3ac;">하위조직</span>
+        <select class="form-select" style="flex:1;" id="sel-suborg">
+          <option value="all">전체</option>
+          ${subOrgOptions.map(o=>`<option value="${esc(o)}"${state.selSubOrg===o?' selected':''}>${esc(o)}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div style="padding:10px 12px;border-bottom:1px solid #f0f1f3;">
+      <input id="search-personal" class="form-input" style="width:100%;" placeholder="이름 또는 사번 검색" value="${esc(state.searchPersonal)}">
+    </div>
+    <div style="max-height:560px;overflow-y:auto;">
+      ${filteredWorkers.length === 0
+        ? emptyState('👷', '작업자가 없습니다.<br>Firestore <b>workers</b> 컬렉션에<br>데이터를 추가해주세요.')
+        : filteredWorkers.map(w=>`
+      <div class="worker-item${selW&&w.id===selW.id?' active':''}" data-worker-id="${esc(w.id)}">
+        <span class="worker-name">${esc(w.name)}</span>
+        <span class="worker-meta">${esc(w.id)} · ${esc(w.dept)} · ${esc(w.subOrg)}</span>
+      </div>`).join('')}
+    </div>
+  </div>
+  <div class="card">
+    ${selW ? `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #eef0f2;background:#fafbfc;">
+      <div style="display:flex;align-items:center;gap:16px;">
+        <span style="width:42px;height:42px;border-radius:50%;background:#3a4250;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;">${esc(selW.name.charAt(0))}</span>
+        <div>
+          <div style="font-size:17px;font-weight:800;color:#2b3138;">${esc(selW.name)} <span style="font-size:12px;font-weight:500;color:#9aa3ac;margin-left:4px;">${esc(selW.id)}</span></div>
+          <div style="font-size:12px;color:#7a8591;margin-top:2px;">${esc(selW.factory)} · ${esc(selW.dept)} · ${esc(selW.subOrg)} · 보호구 ${personalRecords.length}종</div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:#9aa3ac;text-align:right;line-height:1.5;">임박 ${selImminent}건 · 경과 ${selExpired}건<br>총 ${personalRecords.length}건 지급 이력</div>
+    </div>
+    <div class="ov-x">
+      <table class="tbl">
+        <thead><tr>
+          <th>보호구 종류</th><th>최근 지급일</th><th class="tc">수량</th><th>만료예정일</th><th>잔여일수</th><th>상태</th><th>출고번호</th>
+        </tr></thead>
+        <tbody>
+          ${personalRecords.length === 0
+            ? `<tr><td colspan="7" style="text-align:center;color:#9aa3ac;padding:20px;">지급 이력 없음</td></tr>`
+            : personalRecords.map(r=>`<tr>
+              <td style="font-weight:600;color:#2b3138;">${esc(r.typeName)}</td>
+              <td>${esc(r.issueStr)}</td>
+              <td class="tc">${esc(r.qty)}</td>
+              <td>${esc(r.expiryStr)}</td>
+              <td style="color:${r.color};font-weight:600;font-size:11.5px;">${esc(r.dLeftText)}</td>
+              <td><span class="badge" style="color:${r.color};background:${r.bg};">${esc(r.label)}</span></td>
+              <td style="font-size:11px;color:#9aa3ac;">${esc(r.outNo)}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>` : emptyState('👷', '작업자를 선택해주세요.')}
+  </div>
+</div>`;
+}
+
+// ─── DEPT LEDGER ──────────────────────────────────────────────────────────────
+function renderDept() {
+  const c = computed();
+  const depts  = getDepts();
+  const inDept = state.workers.filter(w => w.dept === state.deptTab);
+  return `
+<div class="card">
+  <div class="card-hd">
+    <div class="card-hd-left"><span class="sec-marker">▶</span><span class="sec-title">부서별 보호구 지급 매트릭스</span></div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <select class="form-select"><option>기간: 전체</option><option>최근 3개월</option><option>최근 6개월</option></select>
+      <button class="btn-green" id="btn-export">⬇ 엑셀 내보내기</button>
+    </div>
+  </div>
+  ${depts.length === 0 ? emptyState('🏭', '부서 데이터가 없습니다.') : `
+  <div class="tab-bar">
+    ${depts.map(dp=>`<div class="tab-item${dp===state.deptTab?' active':''}" data-dept-tab="${esc(dp)}">${esc(dp)}</div>`).join('')}
+  </div>
+  <div class="ov-x">
+    <table class="tbl" style="min-width:760px;">
+      <thead><tr>
+        <th style="position:sticky;left:0;background:#f2f3f5;width:150px;">작업자</th>
+        ${state.ppeTypes.map(t=>`<th class="tc" style="border-left:1px solid #eceef0;font-size:11px;">${esc(t.name)}</th>`).join('')}
+      </tr></thead>
+      <tbody>
+        ${inDept.length === 0
+          ? `<tr><td colspan="${state.ppeTypes.length+1}" style="text-align:center;color:#9aa3ac;padding:20px;">해당 부서 작업자 없음</td></tr>`
+          : inDept.map(w=>`<tr>
+          <td style="position:sticky;left:0;background:#fff;">
+            <div style="font-size:12.5px;font-weight:600;color:#2b3138;">${esc(w.name)}</div>
+            <div style="font-size:10px;color:#9aa3ac;">${esc(w.id)}</div>
+          </td>
+          ${state.ppeTypes.map(t => {
+            const r = c.curByKey[w.id+'|'+t.id];
+            return r
+              ? `<td style="border-left:1px solid #f4f5f6;text-align:center;vertical-align:middle;padding:6px 8px;">
+                  <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
+                    <span style="display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:700;color:${r.color};">
+                      <span style="width:7px;height:7px;border-radius:50%;background:${r.dot};"></span>${esc(r.label)}
+                    </span>
+                    <span style="font-size:10px;color:#9aa3ac;">${esc(r.issueStr)}</span>
+                  </div></td>`
+              : `<td class="tc" style="border-left:1px solid #f4f5f6;padding:6px 8px;"><span style="color:#d2d6db;font-size:13px;">–</span></td>`;
+          }).join('')}
+        </tr>`).join('')}
+      </tbody>
+    </table>
+  </div>`}
+</div>`;
+}
+
+// ─── ALARM MANAGEMENT ────────────────────────────────────────────────────────
+function renderAlarm() {
+  const c = computed();
+  const depts = getDepts();
+  let alarmRows = c.current.filter(r => r.status==='imminent'||r.status==='expired');
+  if (state.alarmStatus !== 'all') alarmRows = alarmRows.filter(r => r.status === state.alarmStatus);
+  if (state.alarmDept   !== 'all') alarmRows = alarmRows.filter(r => r.dept   === state.alarmDept);
+  alarmRows = alarmRows.sort((a,b) => a.daysLeft - b.daysLeft);
+
+  return `
+<div class="flex-col gap-14">
+  <div class="card">
+    <div class="card-hd">
+      <div class="card-hd-left"><span class="sec-marker">▶</span><span class="sec-title">만료 임박·경과 목록</span></div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <select class="form-select" id="alarm-status-sel">
+          <option value="all"${state.alarmStatus==='all'?' selected':''}>상태: 전체</option>
+          <option value="imminent"${state.alarmStatus==='imminent'?' selected':''}>임박</option>
+          <option value="expired"${state.alarmStatus==='expired'?' selected':''}>경과</option>
+        </select>
+        <select class="form-select" id="alarm-dept-sel">
+          <option value="all"${state.alarmDept==='all'?' selected':''}>부서: 전체</option>
+          ${depts.map(d=>`<option value="${esc(d)}"${state.alarmDept===d?' selected':''}>${esc(d)}</option>`).join('')}
+        </select>
+        <span style="font-size:11px;color:#9aa3ac;">총 ${alarmRows.length}건</span>
+      </div>
+    </div>
+    ${alarmRows.length === 0
+      ? emptyState('✅', '해당 조건의 알람 항목이 없습니다.')
+      : `<div class="ov-x" style="max-height:340px;overflow-y:auto;"><table class="tbl">
+      <thead><tr>
+        <th style="position:sticky;top:0;">대상</th><th style="position:sticky;top:0;">부서</th>
+        <th style="position:sticky;top:0;">보호구</th><th style="position:sticky;top:0;">지급일</th>
+        <th style="position:sticky;top:0;">만료예정일</th><th style="position:sticky;top:0;">잔여</th>
+        <th style="position:sticky;top:0;">상태</th>
+      </tr></thead>
+      <tbody>
+        ${alarmRows.map(r=>`<tr>
+          <td style="font-weight:600;color:#2b3138;">${esc(r.name)}</td>
+          <td style="font-size:12px;color:#7a8591;">${esc(r.dept)}</td>
+          <td>${esc(r.typeName)}</td>
+          <td>${esc(r.issueStr)}</td>
+          <td>${esc(r.expiryStr)}</td>
+          <td style="color:${r.color};font-weight:700;font-size:11.5px;">${esc(r.dLeftText)}</td>
+          <td><span class="badge" style="color:${r.color};background:${r.bg};">${esc(r.label)}</span></td>
+        </tr>`).join('')}
+      </tbody></table></div>`}
+  </div>
+  <div class="two-col-15">
+    <div class="card">
+      <div class="card-hd">
+        <div class="card-hd-left"><span class="sec-marker">▶</span><span class="sec-title">알람 발송 이력</span></div>
+        <span class="card-meta">최근 발송 기준</span>
+      </div>
+      ${state.alarmHistory.length === 0
+        ? emptyState('📬', '발송 이력이 없습니다.')
+        : `<div class="ov-x" style="max-height:300px;overflow-y:auto;"><table class="tbl">
+        <thead><tr><th>대상</th><th>보호구</th><th>발송일시</th><th>채널</th><th>사유</th></tr></thead>
+        <tbody>
+          ${state.alarmHistory.slice(0,20).map(h=>`<tr>
+            <td style="font-weight:600;color:#2b3138;">${esc(h.target)} <span style="font-weight:400;color:#9aa3ac;font-size:10.5px;">${esc(h.dept)}</span></td>
+            <td>${esc(h.ppe)}</td>
+            <td style="font-size:12px;">${esc(h.date)}</td>
+            <td style="font-size:12px;">${esc(h.ch)}</td>
+            <td><span class="badge" style="color:${esc(h.color)};background:${esc(h.bg)};">${esc(h.reason)}</span></td>
+          </tr>`).join('')}
+        </tbody></table></div>`}
+    </div>
+    <div class="card">
+      <div class="card-hd"><div class="card-hd-left"><span class="sec-marker">▶</span><span class="sec-title">알람 기준 설정</span></div></div>
+      <div style="padding:16px;display:flex;flex-direction:column;gap:16px;">
+        <div>
+          <div style="font-size:12px;color:#5b6671;font-weight:600;margin-bottom:8px;">만료 사전 알람 (일)</div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span style="font-size:11px;color:#9aa3ac;">1차</span>
+            <input id="pre1-input" type="number" class="form-input" style="width:70px;" value="${state.pre1}">
+            <span style="font-size:11px;color:#9aa3ac;">일 전 · 2차</span>
+            <input id="pre2-input" type="number" class="form-input" style="width:70px;" value="${state.pre2}">
+            <span style="font-size:11px;color:#9aa3ac;">일 전</span>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:12px;color:#5b6671;font-weight:600;margin-bottom:8px;">발송 채널</div>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#3b424a;cursor:pointer;"><input type="checkbox" id="ch-email" style="accent-color:#F5821F;width:15px;height:15px;"${state.chEmail?' checked':''}>이메일</label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#3b424a;cursor:pointer;"><input type="checkbox" id="ch-sms" style="accent-color:#F5821F;width:15px;height:15px;"${state.chSms?' checked':''}>SMS</label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#3b424a;cursor:pointer;"><input type="checkbox" id="ch-app" style="accent-color:#F5821F;width:15px;height:15px;"${state.chApp?' checked':''}>사내 메신저</label>
+          </div>
+        </div>
+        <button class="btn-orange" id="btn-save-settings" style="padding:9px;width:100%;font-size:13px;border-radius:4px;">기준 저장</button>
+      </div>
+    </div>
+  </div>
+</div>`;
+}
+
+// ─── PPE MASTER DATA ──────────────────────────────────────────────────────────
+function renderMaster() {
+  return `
+<div class="card">
+  <div class="card-hd">
+    <div class="card-hd-left"><span class="sec-marker">▶</span><span class="sec-title">보호구 기준정보</span></div>
+    <button class="btn-orange" id="btn-add-type">＋ 행 추가</button>
+  </div>
+  ${state.ppeTypes.length === 0
+    ? emptyState('🦺', '"행 추가" 버튼으로 보호구 종류를 등록해주세요.<br>추가한 데이터는 Firestore <b>ppeTypes</b> 컬렉션에 저장됩니다.')
+    : `<div class="ov-x"><table class="tbl">
+    <thead><tr>
+      <th>종류명</th>
+      <th style="width:140px;">사용기한 (개월)</th>
+      <th style="width:140px;">알람 기준일 (일 전)</th>
+      <th>비고</th>
+      <th class="tc" style="width:60px;">관리</th>
+    </tr></thead>
+    <tbody id="master-tbody">
+      ${state.ppeTypes.map(t=>`<tr data-type-id="${esc(t.id)}">
+        <td style="padding:6px 12px;"><input class="form-input-full" data-field="name" value="${esc(t.name)}" style="font-weight:600;color:#2b3138;"></td>
+        <td style="padding:6px 12px;"><input type="number" class="form-input-sm" data-field="months" value="${t.months}"></td>
+        <td style="padding:6px 12px;"><input type="number" class="form-input-sm" data-field="alarmDays" value="${t.alarmDays}"></td>
+        <td style="padding:6px 12px;"><input class="form-input-full" data-field="note" value="${esc(t.note||'')}" style="color:#7a8591;"></td>
+        <td style="padding:6px 12px;text-align:center;"><span class="remove-type" data-type-id="${esc(t.id)}" style="cursor:pointer;color:#c0c6cc;font-size:16px;" title="삭제">✕</span></td>
+      </tr>`).join('')}
+    </tbody>
+  </table></div>`}
+  <div style="padding:11px 14px;font-size:11px;color:#9aa3ac;border-top:1px solid #f0f1f3;">＊ 사용기한·알람 기준일 변경 시 모든 지급 이력의 상태(정상/임박/경과)가 즉시 재계산됩니다. 변경 내용은 Firestore에 자동 저장됩니다.</div>
+</div>`;
+}
+
+// ─── SETTINGS ─────────────────────────────────────────────────────────────────
+function renderSettings() {
+  return `
+<div class="flex-col gap-14">
+  <div class="two-col-eq">
+    <div class="card">
+      <div class="card-hd"><div class="card-hd-left"><span class="sec-marker">▶</span><span class="sec-title">자재창고 출고 연동 상태</span></div></div>
+      <div style="padding:18px;display:flex;flex-direction:column;gap:14px;">
+        <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:#f1f8f3;border:1px solid #cfe7d6;border-radius:5px;">
+          <span style="width:9px;height:9px;border-radius:50%;background:#2f9e5b;flex:none;"></span>
+          <div style="flex:1;">
+            <div style="font-size:13px;font-weight:700;color:#1f7a45;">Firestore 연동 중</div>
+            <div style="font-size:11.5px;color:#5b8a6c;">Firebase Firestore 실시간 동기화</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:11px;color:#9aa3ac;">최근 지급</div>
+            <div style="font-size:12.5px;font-weight:700;color:#2b3138;">${esc(state.lastSync)}</div>
+          </div>
+        </div>
+        <div style="font-size:12px;color:#7a8591;line-height:1.6;">출고 처리가 발생하면 별도 입력 없이 지급 이력 1건이 자동으로 대장에 추가되고, 사용기한 상태가 자동 계산됩니다. 모든 데이터는 Firestore에 실시간으로 저장됩니다.</div>
+        <button class="btn-orange-lg" id="btn-simulate">▶ 출고 발생 시뮬레이션 실행</button>
+        <div style="font-size:10.5px;color:#9aa3ac;text-align:center;">버튼을 누르면 임의 출고 1건이 Firestore에 저장되어 모든 화면에 즉시 반영됩니다.</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-hd"><div class="card-hd-left"><span class="sec-marker">▶</span><span class="sec-title">Firestore 컬렉션 현황</span></div></div>
+      <div style="padding:18px;display:flex;flex-direction:column;gap:12px;">
+        ${[
+          ['보호구 종류 (ppeTypes)', state.ppeTypes.length+'종'],
+          ['작업자 (workers)',       state.workers.length+'명'],
+          ['지급 이력 (records)',    state.records.length+'건'],
+          ['알람 이력 (alarmHistory)',state.alarmHistory.length+'건'],
+          ['연동 로그 (syncLog)',    state.syncLog.length+'건'],
+        ].map(([label,val])=>`
+        <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:10px;border-bottom:1px solid #f0f1f3;">
+          <span style="font-size:12.5px;color:#5b6671;">${label}</span>
+          <span style="font-size:15px;font-weight:800;color:#2b3138;">${val}</span>
+        </div>`).join('')}
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-hd">
+      <div class="card-hd-left"><span class="sec-marker">▶</span><span class="sec-title">작업자 일괄 등록</span></div>
+      <span class="card-meta">PVC공장 247명 + 울산공장 232명 = 총 479명</span>
+    </div>
+    <div style="padding:18px;display:flex;flex-direction:column;gap:12px;">
+      <div style="font-size:12.5px;color:#5b6671;line-height:1.65;">
+        엑셀 LIST 파일(2개 공장)에서 추출한 작업자 479명을 Firestore <b>workers</b> 컬렉션에 일괄 등록합니다.<br>
+        기존 작업자 데이터는 <b>모두 삭제</b>된 후 재등록됩니다. 지급 이력(records)은 그대로 유지됩니다.
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <div style="flex:1;min-width:200px;background:#f4f6f8;border-radius:4px;padding:10px 14px;font-size:12px;color:#7a8591;">
+          공장: <b>PVC공장</b> (13개 부서) · <b>울산공장</b> (11개 부서)
+        </div>
+        <button class="btn-orange" id="btn-import-workers" style="padding:9px 18px;font-size:13px;flex:none;">
+          ▶ 작업자 479명 일괄 등록
+        </button>
+      </div>
+      <div id="import-progress" style="display:none;font-size:12px;color:#F5821F;font-weight:600;"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-hd"><div class="card-hd-left"><span class="sec-marker">▶</span><span class="sec-title">연동 로그</span></div></div>
+    ${state.syncLog.length === 0
+      ? emptyState('📝', '연동 로그가 없습니다.')
+      : `<div class="ov-x" style="max-height:340px;overflow-y:auto;"><table class="tbl">
+      <thead><tr><th>동기화 시각</th><th>유형</th><th class="tc">건수</th><th>내용</th><th>결과</th></tr></thead>
+      <tbody>
+        ${state.syncLog.slice(0,50).map(l=>`<tr>
+          <td style="font-size:12px;">${esc(l.time)}</td>
+          <td style="font-size:12px;">${esc(l.type)}</td>
+          <td class="tc" style="font-weight:600;">${esc(l.count)}</td>
+          <td style="font-size:12px;">${esc(l.detail)}</td>
+          <td><span class="badge" style="color:#1f7a45;background:#e6f4ea;">${esc(l.status)}</span></td>
+        </tr>`).join('')}
+      </tbody></table></div>`}
+  </div>
+</div>`;
+}
+
+// ─── render screen ─────────────────────────────────────────────────────────────
+function renderScreen() {
+  const content = document.getElementById('content');
+  switch (state.screen) {
+    case 'dashboard': content.innerHTML = renderDashboard(); break;
+    case 'personal':  content.innerHTML = renderPersonal();  bindPersonalEvents(); break;
+    case 'dept':      content.innerHTML = renderDept();      bindDeptEvents();     break;
+    case 'alarm':     content.innerHTML = renderAlarm();     bindAlarmEvents();    break;
+    case 'master':    content.innerHTML = renderMaster();    bindMasterEvents();   break;
+    case 'settings':  content.innerHTML = renderSettings();  bindSettingsEvents(); break;
+  }
+}
+
+// ─── event bindings ────────────────────────────────────────────────────────────
+function bindPersonalEvents() {
+  document.getElementById('search-personal')?.addEventListener('input', ev => {
+    const pos = ev.target.selectionStart;
+    state.searchPersonal = ev.target.value;
+    renderScreen();
+    const inp = document.getElementById('search-personal');
+    if (inp) { inp.focus(); try { inp.setSelectionRange(pos, pos); } catch(_){} }
+  });
+  document.getElementById('sel-factory')?.addEventListener('change', ev => {
+    state.selFactory = ev.target.value; state.selDept = 'all'; state.selSubOrg = 'all'; renderScreen();
+  });
+  document.getElementById('sel-dept-filter')?.addEventListener('change', ev => {
+    state.selDept = ev.target.value; state.selSubOrg = 'all'; renderScreen();
+  });
+  document.getElementById('sel-suborg')?.addEventListener('change', ev => {
+    state.selSubOrg = ev.target.value; renderScreen();
+  });
+  document.querySelectorAll('.worker-item[data-worker-id]').forEach(el => {
+    el.addEventListener('click', () => { state.selectedWorkerId = el.dataset.workerId; renderScreen(); });
+  });
+}
+
+function bindDeptEvents() {
+  document.querySelectorAll('.tab-item[data-dept-tab]').forEach(el => {
+    el.addEventListener('click', () => { state.deptTab = el.dataset.deptTab; renderScreen(); });
+  });
+  document.getElementById('btn-export')?.addEventListener('click', () => {
+    showToast('부서별 지급대장 엑셀을 생성했습니다. (데모)');
+  });
+}
+
+function bindAlarmEvents() {
+  document.getElementById('alarm-status-sel')?.addEventListener('change', ev => {
+    state.alarmStatus = ev.target.value; renderScreen();
+  });
+  document.getElementById('alarm-dept-sel')?.addEventListener('change', ev => {
+    state.alarmDept = ev.target.value; renderScreen();
+  });
+  document.getElementById('pre1-input')?.addEventListener('input',  ev => { state.pre1 = parseInt(ev.target.value,10)||0; });
+  document.getElementById('pre2-input')?.addEventListener('input',  ev => { state.pre2 = parseInt(ev.target.value,10)||0; });
+  document.getElementById('ch-email')?.addEventListener('change',   ev => { state.chEmail = ev.target.checked; });
+  document.getElementById('ch-sms')?.addEventListener('change',     ev => { state.chSms   = ev.target.checked; });
+  document.getElementById('ch-app')?.addEventListener('change',     ev => { state.chApp   = ev.target.checked; });
+  document.getElementById('btn-save-settings')?.addEventListener('click', saveSettings);
+}
+
+// debounce map for master field writes
+const masterDebounce = {};
+
+function bindMasterEvents() {
+  document.getElementById('btn-add-type')?.addEventListener('click', async () => {
+    try {
+      await addDoc(collection(db, 'ppeTypes'), { name:'새 보호구', months:12, alarmDays:14, note:'' });
+      showToast('보호구 기준 행을 추가했습니다. (Firestore 저장됨)');
+    } catch (err) { showToast('추가 실패: '+err.message); }
+  });
+
+  document.getElementById('master-tbody')?.addEventListener('input', ev => {
+    const inp = ev.target;
+    const row = inp.closest('tr[data-type-id]');
+    if (!row) return;
+    const tid   = row.dataset.typeId;
+    const field = inp.dataset.field;
+    if (!field) return;
+    // update local state immediately (no re-render → no focus loss)
+    const t = state.ppeTypes.find(x => x.id === tid);
+    if (t) t[field] = (field === 'months' || field === 'alarmDays') ? (parseInt(inp.value,10)||0) : inp.value;
+    // debounced Firestore write
+    clearTimeout(masterDebounce[tid+'_'+field]);
+    masterDebounce[tid+'_'+field] = setTimeout(async () => {
+      try {
+        await updateDoc(doc(db, 'ppeTypes', tid), { [field]: t ? t[field] : inp.value });
+      } catch (err) { showToast('저장 실패: '+err.message); }
+    }, 600);
+  });
+
+  document.getElementById('master-tbody')?.addEventListener('click', async ev => {
+    const btn = ev.target.closest('.remove-type');
+    if (!btn) return;
+    const tid = btn.dataset.typeId;
+    if (!confirm('이 보호구 기준을 삭제하시겠습니까?')) return;
+    try {
+      await deleteDoc(doc(db, 'ppeTypes', tid));
+    } catch (err) { showToast('삭제 실패: '+err.message); }
+  });
+}
+
+function bindSettingsEvents() {
+  document.getElementById('btn-simulate')?.addEventListener('click', addShipment);
+  document.getElementById('btn-import-workers')?.addEventListener('click', importWorkers);
+}
+
+// ─── Firestore write: bulk import workers ────────────────────────────────────
+async function importWorkers() {
+  const btn = document.getElementById('btn-import-workers');
+  const prog = document.getElementById('import-progress');
+  if (!btn || !prog) return;
+  if (!confirm('기존 작업자 데이터를 모두 삭제하고 479명을 새로 등록합니다.\n계속하시겠습니까?')) return;
+
+  btn.disabled = true;
+  btn.textContent = '처리 중...';
+  prog.style.display = 'block';
+  prog.textContent = '① 기존 작업자 데이터 삭제 중...';
+
+  try {
+    // 1. delete all existing workers
+    const snap = await getDocs(collection(db, 'workers'));
+    const BATCH_SIZE = 400;
+    let batch = writeBatch(db);
+    let opCount = 0;
+    for (const d of snap.docs) {
+      batch.delete(d.ref);
+      opCount++;
+      if (opCount === BATCH_SIZE) {
+        await batch.commit();
+        batch = writeBatch(db);
+        opCount = 0;
+      }
+    }
+    if (opCount > 0) await batch.commit();
+
+    // 2. write all seed workers
+    const total = WORKER_SEED_DATA.length;
+    let written = 0;
+    batch = writeBatch(db);
+    opCount = 0;
+    for (const w of WORKER_SEED_DATA) {
+      const ref = doc(collection(db, 'workers'));
+      batch.set(ref, {
+        factory:    w.f,
+        dept:       w.d,
+        subOrg:     w.s,
+        name:       w.n,
+        employeeId: w.e,
+      });
+      opCount++;
+      written++;
+      if (opCount === BATCH_SIZE) {
+        await batch.commit();
+        batch = writeBatch(db);
+        opCount = 0;
+        prog.textContent = `② 작업자 등록 중... ${written}/${total}명`;
+      }
+    }
+    if (opCount > 0) await batch.commit();
+
+    prog.textContent = `✔ 완료: 작업자 ${total}명 등록 완료`;
+    prog.style.color = '#2f9e5b';
+    showToast(`작업자 ${total}명을 Firestore에 등록했습니다.`);
+  } catch (err) {
+    prog.textContent = '오류: ' + err.message;
+    prog.style.color = '#d63b30';
+    showToast('등록 실패: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '▶ 작업자 479명 일괄 등록';
+  }
+}
+
+// ─── Firestore write: settings ────────────────────────────────────────────────
+async function saveSettings() {
+  try {
+    await setDoc(doc(db, 'settings', 'main'), {
+      pre1: state.pre1, pre2: state.pre2,
+      chEmail: state.chEmail, chSms: state.chSms, chApp: state.chApp,
+      lastSync: state.lastSync, shipSeq: state.shipSeq,
+    }, { merge: true });
+    showToast('알람 기준을 저장했습니다. ('+state.pre1+'일 · '+state.pre2+'일 전)');
+  } catch (err) { showToast('저장 실패: '+err.message); }
+}
+
+// ─── Firestore write: shipment simulation ─────────────────────────────────────
+let flashTimer = null;
+async function addShipment() {
+  if (state.workers.length === 0) { showToast('작업자 데이터가 없습니다. Firestore workers 컬렉션에 작업자를 추가해주세요.'); return; }
+  if (state.ppeTypes.length === 0){ showToast('보호구 기준정보가 없습니다. 먼저 보호구 종류를 추가해주세요.'); return; }
+
+  const w   = state.workers[Math.floor(Math.random() * state.workers.length)];
+  const t   = state.ppeTypes[Math.floor(Math.random() * state.ppeTypes.length)];
+  const seq = (state.shipSeq || 0) + 1;
+  const todayStr = fmtDate(new Date());
+  const outNo    = 'OUT-' + todayStr.replace(/-/g,'') + '-' + String(seq).padStart(3,'0');
+  const timeStr  = fmtNow();
+  const isoNow   = new Date().toISOString();
+
+  const rec = { workerId:w.id, typeId:t.id, qty:t.id==='gloves'?5:(t.id==='earplug'?10:1), issueDate:todayStr, outNo, createdAt:isoNow };
+  const log = { time:timeStr, type:'자동', count:1, detail:`${w.dept} ${w.name} ${t.name} 출고 반영`, status:'성공', createdAt:isoNow };
+
+  try {
+    const recRef = await addDoc(collection(db, 'records'), rec);
+    await addDoc(collection(db, 'syncLog'), log);
+    await setDoc(doc(db, 'settings', 'main'),
+      { lastSync:timeStr, shipSeq:seq }, { merge:true });
+
+    state.flashId = recRef.id;
+    clearTimeout(flashTimer);
+    flashTimer = setTimeout(() => { state.flashId = null; }, 2600);
+    showToast(`출고 연동 완료 — ${w.name} / ${t.name} 지급 이력이 Firestore에 저장되었습니다.`);
+  } catch (err) { showToast('시뮬레이션 실패: '+err.message); }
+}
+
+// ─── global events ────────────────────────────────────────────────────────────
+document.getElementById('toggle-sb').addEventListener('click', () => {
+  state.collapsed = !state.collapsed; updateSidebar();
+});
+document.getElementById('sb-nav').addEventListener('click', ev => {
+  const item = ev.target.closest('[data-nav]');
+  if (!item) return;
+  state.screen = item.dataset.nav;
+  updateSidebar(); updateTopbar(); renderScreen();
+});
+</script>
+</body>
+</html>

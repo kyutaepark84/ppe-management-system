@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1440">
+<title>PPE 관리시스템</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Noto Sans KR','Malgun Gothic','맑은 고딕',system-ui,sans-serif;background:#eef0f2;color:#333;font-size:13px;}
+input,select,button,textarea{font-family:inherit;}
+::-webkit-scrollbar{width:9px;height:9px;}
+::-webkit-scrollbar-thumb{background:#cbd0d6;border-radius:5px;}
+::-webkit-scrollbar-track{background:transparent;}
+button{cursor:pointer;}
+
+#app{display:flex;min-height:100vh;}
+
+/* Sidebar */
+#sidebar{width:232px;flex:none;background:#222831;display:flex;flex-direction:column;transition:width .15s;position:sticky;top:0;align-self:flex-start;height:100vh;overflow:hidden;}
+#sidebar.collapsed{width:62px;}
+.sb-logo{height:56px;display:flex;align-items:center;gap:10px;padding:0 16px;border-bottom:1px solid #313945;flex:none;}
+.sb-logo-icon{width:26px;height:26px;flex:none;background:#F5821F;border-radius:5px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px;}
+.sb-logo-text{color:#fff;font-weight:700;font-size:14px;letter-spacing:-.3px;white-space:nowrap;overflow:hidden;}
+.sb-nav{flex:1;padding:8px 0;overflow-y:auto;}
+.nav-item{display:flex;align-items:center;gap:11px;padding:11px 16px;cursor:pointer;color:#aeb6c0;background:transparent;border-left:3px solid transparent;font-weight:500;font-size:13px;transition:background .1s;user-select:none;}
+.nav-item:hover{background:rgba(255,255,255,.05);}
+.nav-item.active{color:#F5821F;background:rgba(245,130,31,.12);border-left-color:#F5821F;font-weight:700;}
+.nav-icon{width:18px;text-align:center;font-size:15px;flex:none;}
+.nav-label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sb-ver{padding:12px 16px;border-top:1px solid #313945;font-size:10.5px;color:#7a8694;white-space:nowrap;overflow:hidden;}
+
+/* Main */
+#main{flex:1;display:flex;flex-direction:column;min-width:0;}
+
+/* Topbar */
+#topbar{height:56px;flex:none;background:#fff;border-bottom:1px solid #e1e4e8;display:flex;align-items:center;padding:0 20px;gap:16px;position:sticky;top:0;z-index:5;}
+#toggle-sb{cursor:pointer;font-size:18px;color:#6b7785;width:24px;text-align:center;user-select:none;}
+.top-title{display:flex;align-items:center;gap:8px;}
+.top-marker{color:#F5821F;font-size:9px;}
+.top-title-text{font-weight:700;font-size:16px;color:#2b3138;letter-spacing:-.3px;}
+.top-spacer{flex:1;}
+.sync-chip{display:flex;align-items:center;gap:6px;font-size:11px;color:#8a93a0;padding:5px 11px;background:#f4f6f8;border-radius:20px;}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:#2f9e5b;flex:none;}
+.bell-wrap{position:relative;cursor:pointer;}
+.bell-icon{font-size:18px;color:#6b7785;}
+#bell-badge{position:absolute;top:-5px;right:-7px;min-width:16px;height:16px;padding:0 4px;background:#d63b30;color:#fff;font-size:10px;font-weight:700;border-radius:9px;display:flex;align-items:center;justify-content:center;}
+.user-wrap{display:flex;align-items:center;gap:9px;padding-left:14px;border-left:1px solid #e8eaed;}
+.user-avatar{width:32px;height:32px;border-radius:50%;background:#3a4250;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;}
+.user-name{font-size:12.5px;font-weight:700;color:#2b3138;line-height:1.25;}
+.user-role{font-size:10.5px;color:#9aa3ac;line-height:1.25;}
+
+/* Content */
+#content{flex:1;padding:18px 22px;overflow-y:auto;}
+
+/* Cards */
+.card{background:#fff;border:1px solid #e6e8eb;border-radius:5px;}
+.card-hd{display:flex;align-items:center;justify-content:space-between;padding:11px 14px;border-bottom:1px solid #eef0f2;flex-wrap:wrap;gap:8px;}
+.card-hd-left{display:flex;align-items:center;gap:7px;}
+.sec-marker{color:#F5821F;font-size:9px;}
+.sec-title{font-weight:700;font-size:14px;color:#2b3138;}
+.card-meta{font-size:11px;color:#9aa3ac;}
+
+/* Tables */
+.tbl{width:100%;border-collapse:collapse;}
+.tbl th{padding:8px 10px;background:#f2f3f5;color:#5b6671;font-weight:600;font-size:11.5px;text-align:left;border-bottom:1px solid #e6e8eb;white-space:nowrap;}
+.tbl td{padding:7px 10px;border-bottom:1px solid #f0f1f3;font-size:12.5px;color:#3b424a;}
+.tbl th.tc,.tbl td.tc{text-align:center;}
+
+/* Status badge */
+.badge{display:inline-block;padding:2px 9px;border-radius:11px;font-size:11px;font-weight:700;}
+
+/* Buttons */
+.btn-orange{padding:6px 13px;background:#F5821F;border:none;color:#fff;border-radius:4px;font-size:12px;font-weight:700;}
+.btn-orange:hover{background:#e57318;}
+.btn-orange-lg{padding:11px;background:#F5821F;border:none;color:#fff;border-radius:5px;font-size:13px;font-weight:700;width:100%;}
+.btn-orange-lg:hover{background:#e57318;}
+.btn-green{padding:6px 13px;background:#fff;border:1px solid #2f9e5b;color:#2f9e5b;border-radius:4px;font-size:12px;font-weight:700;}
+.btn-green:hover{background:#f1f8f3;}
+
+/* Form controls */
+.form-select{padding:5px 9px;border:1px solid #d8dce0;border-radius:4px;font-size:11.5px;color:#3b424a;outline:none;background:#fff;}
+.form-select:focus{border-color:#F5821F;}
+.form-input{padding:6px 9px;border:1px solid #d8dce0;border-radius:4px;font-size:12.5px;color:#3b424a;outline:none;background:#fff;}
+.form-input:focus{border-color:#F5821F;}
+.form-input-sm{width:80px;padding:6px 8px;border:1px solid #e3e6e9;border-radius:4px;font-size:12.5px;color:#3b424a;outline:none;background:#fff;}
+.form-input-sm:focus{border-color:#F5821F;}
+.form-input-full{width:100%;padding:6px 8px;border:1px solid #e3e6e9;border-radius:4px;font-size:12.5px;color:#3b424a;outline:none;background:#fff;}
+.form-input-full:focus{border-color:#F5821F;}
+
+/* Dept tabs */
+.tab-bar{display:flex;gap:2px;padding:10px 14px 0;border-bottom:1px solid #eef0f2;}
+.tab-item{padding:8px 16px;cursor:pointer;font-size:12.5px;font-weight:500;color:#7a8591;border-bottom:2px solid transparent;margin-bottom:-1px;user-select:none;}
+.tab-item.active{color:#F5821F;font-weight:700;border-bottom-color:#F5821F;}
+
+/* Toast */
+#toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%);background:#222831;color:#fff;padding:12px 20px;border-radius:6px;font-size:13px;font-weight:500;box-shadow:0 6px 24px rgba(0,0,0,.22);display:none;align-items:center;gap:10px;z-index:50;}
+#toast.show{display:flex;}
+
+/* Worker list */
+.worker-item{display:flex;flex-direction:column;gap:1px;padding:9px 13px;cursor:pointer;border-bottom:1px solid #f3f4f6;border-left:3px solid transparent;background:#fff;user-select:none;}
+.worker-item:hover{background:#fafbfc;}
+.worker-item.active{background:#fff6ee;border-left-color:#F5821F;}
+.worker-name{font-size:12.5px;font-weight:600;color:#2b3138;}
+.worker-item.active .worker-name{color:#F5821F;}
+.worker-meta{font-size:10.5px;color:#9aa3ac;}
+
+/* Summary cards */
+.sum-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+.sum-card{background:#fff;border:1px solid #e6e8eb;border-radius:5px;padding:15px 17px;}
+.sum-label{font-size:12px;color:#7a8591;font-weight:500;}
+.sum-val-row{display:flex;align-items:baseline;gap:5px;margin-top:9px;}
+.sum-num{font-size:32px;font-weight:800;line-height:1;}
+.sum-unit{font-size:13px;color:#9aa3ac;}
+.sum-sub{font-size:11px;color:#9aa3ac;margin-top:7px;}
+
+/* Layout helpers */
+.flex-col{display:flex;flex-direction:column;}
+.gap-14{gap:14px;}
+.two-col{display:grid;grid-template-columns:1.65fr 1fr;gap:14px;align-items:start;}
+.two-col-eq{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start;}
+.two-col-15{display:grid;grid-template-columns:1.5fr 1fr;gap:14px;align-items:start;}
+.personal-grid{display:grid;grid-template-columns:268px 1fr;gap:14px;align-items:start;}
+.ov-x{overflow-x:auto;}
+.ov-y{overflow-y:auto;}
+.sticky-t{position:sticky;top:0;}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="sidebar">
+    <div class="sb-logo">
+      <div class="sb-logo-icon">P</div>
+      <div class="sb-logo-text" id="sb-title">PPE 관리시스템</div>
+    </div>
+    <nav class="sb-nav" id="sb-nav"></nav>
+    <div class="sb-ver" id="sb-ver">v2.4 · 사내 설비관리</div>
+  </div>
+  <div id="main">
+    <div id="topbar">
+      <span id="toggle-sb">☰</span>
+      <div class="top-title">
+        <span class="top-marker">▶</span>
+        <span class="top-title-text" id="page-title"></span>
+      </div>
+      <div class="top-spacer"></div>
+      <div class="sync-chip">
+        <span class="sync-dot"></span>
+        출고연동 정상 · 최근 <span id="last-sync-text"></span>
+      </div>
+      <div class="bell-wrap">
+        <span class="bell-icon">🔔</span>
+        <span id="bell-badge">0</span>
+      </div>
+      <div class="user-wrap">
+        <div class="user-avatar">정</div>
+        <div>
+          <div class="user-name">정우성</div>
+          <div class="user-role">기계정비1팀 · 정비 엔지니어</div>
+        </div>
+      </div>
+    </div>
+    <div id="content"></div>
+  </div>
+</div>
+<div id="toast">
+  <span style="width:8px;height:8px;border-radius:50%;background:#F5821F;flex:none;"></span>
+  <span id="toast-msg"></span>
+</div>
+
+<script>
+'use strict';
+const APP = (() => {
+  const TODAY = new Date(2026, 5, 30);
+
+  // ─── helpers ───────────────────────────────────────────────────────────────
+  const e = s => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const addMonths = (d, m) => { const x = new Date(d.getTime()); x.setMonth(x.getMonth() + m); return x; };
+  const fmtDate = d => { const y = d.getFullYear(), mo = String(d.getMonth()+1).padStart(2,'0'), da = String(d.getDate()).padStart(2,'0'); return y+'-'+mo+'-'+da; };
+
+  // seeded rng for reproducible data
+  let seed = 987654321;
+  const rnd = () => { seed = (seed * 1664525 + 1013904223) % 4294967296; return seed / 4294967296; };
+
+  // ─── build initial data ────────────────────────────────────────────────────
+  const depts = ['기계정비1팀','기계정비2팀','전기정비팀','계장정비팀','용접팀'];
+  const ppeTypesInit = [
+    {id:'helmet',  name:'안전모',       months:36, alarmDays:30, note:'충격 흡수 / 3년 주기 교체'},
+    {id:'shoes',   name:'안전화',       months:24, alarmDays:30, note:'밑창 마모 시 조기 교체'},
+    {id:'goggle',  name:'보안경',       months:12, alarmDays:14, note:'스크래치 발생 시 교체'},
+    {id:'dustmask',name:'방진마스크',   months:6,  alarmDays:14, note:'1급 / 분진 작업용'},
+    {id:'earplug', name:'귀마개',       months:6,  alarmDays:7,  note:'NRR 25dB'},
+    {id:'gloves',  name:'절단방지장갑', months:3,  alarmDays:7,  note:'Lv.5 / 박스당 5조'},
+    {id:'cartridge',name:'방독정화통',  months:6,  alarmDays:14, note:'유기가스용'},
+    {id:'harness', name:'안전대',       months:12, alarmDays:30, note:'고소작업 필수'},
+  ];
+  const names = ['김상우','박정훈','이도현','최민재','정우성','강태경','윤성호','임재현','한지훈','오세준','서동욱','신현우','조민기','배성훈','권혁준','남기태','문선재','류준영'];
+  const factoryOf = {'기계정비1팀':'제1공장','기계정비2팀':'제1공장','전기정비팀':'제1공장','계장정비팀':'제2공장','용접팀':'제2공장'};
+  const subOrgsOf = {'기계정비1팀':['1과 장치','1과 회전기'],'기계정비2팀':['2과 배관','2과 밸브'],'전기정비팀':['수전반','전동기'],'계장정비팀':['계측','제어'],'용접팀':['용접1반','용접2반']};
+  const workers = names.map((n, i) => { const dept = depts[i % depts.length]; const subs = subOrgsOf[dept]; return { id:'E'+(2031+i), name:n, dept, factory:factoryOf[dept], subOrg:subs[Math.floor(i/depts.length) % subs.length] }; });
+
+  let rid = 1;
+  const outSeq = {};
+  const mkOut = d => { const k = fmtDate(d).replace(/-/g,''); outSeq[k] = (outSeq[k]||0)+1; return 'OUT-'+k+'-'+String(outSeq[k]).padStart(3,'0'); };
+
+  const records = [];
+  const makeRec = (w, tid, monthsAgo, dayJit) => {
+    const t = ppeTypesInit.find(x => x.id === tid);
+    const issue = addMonths(TODAY, -monthsAgo);
+    issue.setDate(issue.getDate() - dayJit);
+    records.push({ id:'R'+(rid++), workerId:w.id, typeId:tid, qty:tid==='gloves'?5:(tid==='earplug'?10:1), issueDate:fmtDate(issue), outNo:mkOut(issue) });
+  };
+  const makeAt = (w, tid, daysLeft) => {
+    const t = ppeTypesInit.find(x => x.id === tid);
+    const expiry = new Date(TODAY.getTime() + daysLeft * 86400000);
+    const issue = addMonths(expiry, -t.months);
+    records.push({ id:'R'+(rid++), workerId:w.id, typeId:tid, qty:tid==='gloves'?5:(tid==='earplug'?10:1), issueDate:fmtDate(issue), outNo:mkOut(issue) });
+  };
+
+  const skip = { 4:['goggle'], 9:['shoes'], 14:['goggle','helmet'] };
+  workers.forEach((w, i) => {
+    const base = ['helmet','shoes','goggle'], sk = skip[i] || [];
+    base.forEach(tid => { if (sk.indexOf(tid) >= 0) return; const t = ppeTypesInit.find(x => x.id === tid); makeRec(w, tid, Math.floor(rnd()*t.months*1.12), Math.floor(rnd()*28)); });
+    const extras = ['dustmask','earplug','gloves','cartridge','harness'].filter(() => rnd() > 0.45);
+    if (w.dept === '용접팀' && extras.indexOf('cartridge') < 0) extras.push('cartridge');
+    if (w.dept === '전기정비팀' && extras.indexOf('harness') < 0) extras.push('harness');
+    extras.forEach(tid => { const t = ppeTypesInit.find(x => x.id === tid); makeRec(w, tid, Math.floor(rnd()*t.months*1.12), Math.floor(rnd()*28)); });
+  });
+  makeAt(workers[1],'goggle',6); makeAt(workers[4],'dustmask',4); makeAt(workers[8],'earplug',2);
+  makeAt(workers[6],'harness',8); makeAt(workers[12],'shoes',13); makeAt(workers[3],'helmet',19);
+  makeAt(workers[10],'gloves',-9); makeAt(workers[2],'cartridge',-15); makeAt(workers[7],'goggle',-4); makeAt(workers[15],'earplug',-22);
+
+  const alarmHistoryInit = [
+    {target:'박정훈',dept:'기계정비2팀',ppe:'보안경',   date:'2026-06-29 09:00',ch:'이메일·SMS',  reason:'임박',color:'#cf7012',bg:'#fff3e3'},
+    {target:'정우성',dept:'기계정비1팀',ppe:'방진마스크',date:'2026-06-28 09:00',ch:'SMS',         reason:'임박',color:'#cf7012',bg:'#fff3e3'},
+    {target:'서동욱',dept:'기계정비2팀',ppe:'절단방지장갑',date:'2026-06-27 18:30',ch:'이메일',   reason:'경과',color:'#d63b30',bg:'#fdecea'},
+    {target:'이도현',dept:'전기정비팀', ppe:'방독정화통',date:'2026-06-26 09:00',ch:'이메일·SMS',  reason:'경과',color:'#d63b30',bg:'#fdecea'},
+    {target:'권혁준',dept:'전기정비팀', ppe:'귀마개',    date:'2026-06-25 09:00',ch:'사내 메신저', reason:'경과',color:'#d63b30',bg:'#fdecea'},
+    {target:'한지훈',dept:'전기정비팀', ppe:'안전대',    date:'2026-06-24 09:00',ch:'이메일',      reason:'임박',color:'#cf7012',bg:'#fff3e3'},
+    {target:'문선재',dept:'전기정비팀', ppe:'안전화',    date:'2026-06-22 09:00',ch:'SMS',         reason:'임박',color:'#cf7012',bg:'#fff3e3'},
+  ];
+  const syncLogInit = [
+    {time:'2026-06-30 08:02',type:'자동',count:3,detail:'기계정비1팀 안전모 외 2건 출고 반영',status:'성공'},
+    {time:'2026-06-30 06:00',type:'정기',count:0,detail:'정기 동기화 (변동 없음)',status:'성공'},
+    {time:'2026-06-29 17:41',type:'자동',count:5,detail:'용접팀 방독정화통 외 4건 출고 반영',status:'성공'},
+    {time:'2026-06-29 11:20',type:'자동',count:1,detail:'전기정비팀 절단방지장갑 출고 반영',status:'성공'},
+    {time:'2026-06-29 08:00',type:'정기',count:2,detail:'기계정비2팀 보안경 외 1건 출고 반영',status:'성공'},
+    {time:'2026-06-28 16:05',type:'자동',count:4,detail:'계장정비팀 귀마개 외 3건 출고 반영',status:'성공'},
+  ];
+
+  // ─── state ─────────────────────────────────────────────────────────────────
+  const state = {
+    screen: 'dashboard',
+    records: records.slice(),
+    ppeTypes: ppeTypesInit.map(t => ({...t})),
+    workers,
+    depts,
+    selectedWorkerId: workers[0].id,
+    deptTab: depts[0],
+    collapsed: false,
+    alarmHistory: alarmHistoryInit.slice(),
+    syncLog: syncLogInit.slice(),
+    lastSync: '2026-06-30 08:02',
+    pre1: 30, pre2: 7,
+    chEmail: true, chSms: true, chApp: false,
+    searchPersonal: '',
+    selFactory: 'all', selDept: 'all', selSubOrg: 'all',
+    alarmStatus: 'all', alarmDept: 'all',
+    flashId: null,
+    toast: '',
+    shipSeq: 18,
+  };
+
+  let toastTimer = null, flashTimer = null, liveTimer = null;
+
+  // ─── derive record ─────────────────────────────────────────────────────────
+  function derive(r) {
+    const t = state.ppeTypes.find(x => x.id === r.typeId) || {id:r.typeId,name:r.typeId,months:12,alarmDays:14};
+    const w = state.workers.find(x => x.id === r.workerId) || {id:r.workerId,name:'-',dept:'-',factory:'-',subOrg:'-'};
+    const issue = new Date(r.issueDate);
+    const expiry = addMonths(issue, t.months);
+    const daysLeft = Math.floor((expiry - TODAY) / 86400000);
+    let status, label, color, bg, dot;
+    if (daysLeft < 0)              { status='expired';  label='경과'; color='#d63b30'; bg='#fdecea'; dot='#d63b30'; }
+    else if (daysLeft <= t.alarmDays){ status='imminent'; label='임박'; color='#cf7012'; bg='#fff3e3'; dot='#F5821F'; }
+    else                            { status='normal';   label='정상'; color='#6b7785'; bg='#f1f3f5'; dot='#aab2bb'; }
+    const dLeftText = daysLeft < 0 ? Math.abs(daysLeft)+'일 경과' : daysLeft+'일 남음';
+    return {...r, typeName:t.name, dept:w.dept, factory:w.factory, subOrg:w.subOrg, name:w.name,
+      issueStr:fmtDate(issue), expiryStr:fmtDate(expiry), daysLeft, dLeftText, status, label, color, bg, dot};
+  }
+
+  // ─── computed ──────────────────────────────────────────────────────────────
+  function computed() {
+    const allDerived = state.records.map(derive).sort((a,b) => a.issueDate < b.issueDate ? 1 : a.issueDate > b.issueDate ? -1 : 0);
+    const curMap = {};
+    state.records.forEach(r => { const k = r.workerId+'|'+r.typeId; if (!curMap[k] || r.issueDate > curMap[k].issueDate) curMap[k] = r; });
+    const current = Object.values(curMap).map(derive);
+    const curByKey = {};
+    current.forEach(r => { curByKey[r.workerId+'|'+r.typeId] = r; });
+    const imminent = current.filter(r => r.status === 'imminent');
+    const expired  = current.filter(r => r.status === 'expired');
+    const thisMonth = state.records.filter(r => r.issueDate >= '2026-06-01' && r.issueDate <= '2026-06-30');
+    const required = ['helmet','shoes','goggle'];
+    const notRec = [];
+    state.workers.forEach(w => { required.forEach(tid => { if (!state.records.some(r => r.workerId===w.id && r.typeId===tid)) notRec.push({w,tid}); }); });
+    return { allDerived, current, curByKey, imminent, expired, thisMonth, notRec, bellCount: imminent.length + expired.length };
+  }
+
+  // ─── render sidebar & topbar ────────────────────────────────────────────────
+  const menuDef = [
+    ['dashboard','대시보드',        '▤'],
+    ['personal', '개인별 지급대장', '☰'],
+    ['dept',     '부서별 지급대장', '▦'],
+    ['alarm',    '사용기한/알람 관리','◷'],
+    ['master',   '보호구 기준정보', '◈'],
+    ['settings', '설정',            '⚙'],
+  ];
+  const titles = {dashboard:'대시보드', personal:'개인별 지급대장', dept:'부서별 지급대장', alarm:'사용기한 / 알람 관리', master:'보호구 기준정보', settings:'설정'};
+
+  function updateSidebar() {
+    const nav = document.getElementById('sb-nav');
+    nav.innerHTML = menuDef.map(([id, label, icon]) => `
+      <div class="nav-item${state.screen===id?' active':''}" data-nav="${id}">
+        <span class="nav-icon">${icon}</span>
+        <span class="nav-label">${label}</span>
+      </div>`).join('');
+    const sb = document.getElementById('sidebar');
+    if (state.collapsed) sb.classList.add('collapsed'); else sb.classList.remove('collapsed');
+    document.getElementById('sb-title').style.display = state.collapsed ? 'none' : '';
+    document.getElementById('sb-ver').style.opacity = state.collapsed ? '0' : '1';
+  }
+
+  function updateTopbar() {
+    const c = computed();
+    document.getElementById('page-title').textContent = titles[state.screen];
+    document.getElementById('last-sync-text').textContent = state.lastSync;
+    document.getElementById('bell-badge').textContent = c.bellCount;
+  }
+
+  // ─── DASHBOARD ─────────────────────────────────────────────────────────────
+  function renderDashboard() {
+    const c = computed();
+    const summary = [
+      {label:'만료 임박', value:c.imminent.length, sub:'알람 기준일 이내',    accent:'#F5821F', numColor:'#F5821F'},
+      {label:'만료 경과', value:c.expired.length,  sub:'즉시 교체 필요',      accent:'#d63b30', numColor:'#d63b30'},
+      {label:'미수령',    value:c.notRec.length,   sub:'필수 보호구 미지급',  accent:'#8a93a0', numColor:'#3b424a'},
+      {label:'이번 달 지급', value:c.thisMonth.length, sub:'2026년 6월 누적',  accent:'#3b8f5a', numColor:'#2f7d4d'},
+    ];
+    const statusDefs = [{key:'imminent',label:'임박',color:'#F5821F'},{key:'expired',label:'경과',color:'#d63b30'},{key:'normal',label:'정상',color:'#aab2bb'}];
+    const deptGrid = statusDefs.map(sd => ({
+      ...sd,
+      cells: state.depts.map(dp => {
+        const cnt = c.current.filter(r => r.dept===dp && r.status===sd.key).length;
+        const hot = sd.key !== 'normal' && cnt > 0;
+        return {dept:dp, cnt, color: hot ? sd.color : '#9aa3ac', weight: hot ? '800' : '500'};
+      }),
+      total: c.current.filter(r => r.status===sd.key).length
+    }));
+    const recentList = c.allDerived.slice(0, 9).map(r => ({...r, isNew: r.id === state.flashId}));
+    const todayAlarms = c.current.filter(r => r.status==='imminent'||r.status==='expired').sort((a,b)=>a.daysLeft-b.daysLeft).slice(0,12);
+
+    return `
+<div class="flex-col gap-14">
+  <div class="sum-grid">
+    ${summary.map(c => `
+    <div class="sum-card" style="border-top:3px solid ${c.accent};">
+      <div class="sum-label">${c.label}</div>
+      <div class="sum-val-row"><span class="sum-num" style="color:${c.numColor};">${c.value}</span><span class="sum-unit">건</span></div>
+      <div class="sum-sub">${c.sub}</div>
+    </div>`).join('')}
+  </div>
+  <div class="two-col">
+    <div class="flex-col gap-14">
+      <div class="card">
+        <div class="card-hd">
+          <div class="card-hd-left"><span class="sec-marker">▶</span><span class="sec-title">부서별 사용기한 현황</span></div>
+          <span class="card-meta">기준일 2026-06-30 · 최신 지급 기준</span>
+        </div>
+        <div class="ov-x">
+          <table class="tbl">
+            <thead><tr>
+              <th style="width:96px;">상태 ＼ 부서</th>
+              ${state.depts.map(dp=>`<th class="tc">${e(dp)}</th>`).join('')}
+              <th class="tc" style="background:#ebedf0;font-weight:700;">합계</th>
+            </tr></thead>
+            <tbody>
+              ${deptGrid.map(row=>`
+              <tr>
+                <td><span class="badge" style="color:#fff;background:${row.color};">${e(row.label)}</span></td>
+                ${row.cells.map(cell=>`<td class="tc" style="font-size:15px;font-weight:${cell.weight};color:${cell.color};">${cell.cnt}</td>`).join('')}
+                <td class="tc" style="font-size:15px;font-weight:800;color:${row.color};background:#fafbfc;">${row.total}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-hd">
+          <div class="card-hd-left"><span class="sec-marker">▶</span><span class="sec-title">최근 지급 내역</span></div>
+          <span class="card-meta">출고 데이터 자동 반영 · 최신순</span>
+        </div>
+        <div class="ov-x">
+          <table class="tbl">
+            <thead><tr>
+              <th>작업자</th><th>보호구</th><th>지급일</th><th>만료예정일</th><th>상태</th><th>출고번호</th>
+            </tr></thead>
+            <tbody>
+              ${recentList.map(r=>`
+              <tr style="background:${r.isNew?'#fff8ef':'#fff'};">
+                <td style="white-space:nowrap;">
+                  <div style="font-size:12.5px;font-weight:600;color:#2b3138;">${e(r.name)}${r.isNew?'<span style="margin-left:5px;font-size:9px;font-weight:800;color:#fff;background:#F5821F;padding:1px 5px;border-radius:3px;">NEW</span>':''}</div>
+                  <div style="font-size:10.5px;color:#9aa3ac;">${e(r.dept)}</div>
+                </td>
+                <td>${e(r.typeName)}</td>
+                <td>${e(r.issueStr)}</td>
+                <td>${e(r.expiryStr)}</td>
+                <td><span class="badge" style="color:${r.color};background:${r.bg};">${e(r.label)}</span></td>
+                <td style="font-size:11px;color:#9aa3ac;">${e(r.outNo)}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="align-self:stretch;">
+      <div class="card-hd">
+        <div class="card-hd-left"><span class="sec-marker">▶</span><span class="sec-title">오늘의 알람</span></div>
+        <span style="font-size:11px;font-weight:700;color:#d63b30;">${c.bellCount}건</span>
+      </div>
+      <div style="max-height:540px;overflow-y:auto;">
+        ${todayAlarms.map(a=>`
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 13px;border-bottom:1px solid #f0f1f3;">
+          <span style="width:8px;height:8px;border-radius:50%;background:${a.dot};flex:none;"></span>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:12.5px;color:#2b3138;font-weight:600;">${e(a.name)} <span style="font-weight:400;color:#9aa3ac;font-size:10.5px;">${e(a.dept)}</span></div>
+            <div style="font-size:11.5px;color:#7a8591;">${e(a.typeName)}</div>
+          </div>
+          <div style="text-align:right;flex:none;">
+            <span class="badge" style="color:${a.color};background:${a.bg};">${e(a.label)}</span>
+            <div style="font-size:10.5px;color:#9aa3ac;margin-top:3px;">${e(a.dLeftText)}</div>
+          </div>
+        </div>`).join('')}
+        ${todayAlarms.length===0?'<div style="padding:20px;text-align:center;color:#9aa3ac;font-size:12px;">알람 없음</div>':''}
+      </div>
+    </div>
+  </div>
+</div>`;
+  }
+
+  // ─── PERSONAL LEDGER ────────────────────────────────────────────────────────
+  function renderPersonal() {
+    const q = state.searchPersonal.trim();
+    const factoryOptions = [...new Set(state.workers.map(w => w.factory))];
+    const deptOptions = [...new Set(state.workers.filter(w => state.selFactory==='all'||w.factory===state.selFactory).map(w => w.dept))];
+    const subOrgOptions = [...new Set(state.workers.filter(w => (state.selFactory==='all'||w.factory===state.selFactory) && (state.selDept==='all'||w.dept===state.selDept)).map(w => w.subOrg))];
+    const filteredWorkers = state.workers.filter(w =>
+      (state.selFactory==='all'||w.factory===state.selFactory) &&
+      (state.selDept==='all'||w.dept===state.selDept) &&
+      (state.selSubOrg==='all'||w.subOrg===state.selSubOrg) &&
+      (!q || w.name.indexOf(q)>=0 || w.id.toLowerCase().indexOf(q.toLowerCase())>=0)
+    );
+    const selW = state.workers.find(w => w.id===state.selectedWorkerId) || state.workers[0];
+    const wcur = {};
+    state.records.filter(r => r.workerId===selW.id).forEach(r => { const k=r.typeId; if (!wcur[k]||r.issueDate>wcur[k].issueDate) wcur[k]=r; });
+    const personalRecords = state.ppeTypes.map(t => wcur[t.id]).filter(Boolean).map(derive);
+    const selImminent = personalRecords.filter(r=>r.status==='imminent').length;
+    const selExpired  = personalRecords.filter(r=>r.status==='expired').length;
+
+    return `
+<div class="personal-grid">
+  <div class="card">
+    <div class="card-hd"><div class="card-hd-left"><span class="sec-marker">▶</span><span class="sec-title">작업자 선택</span></div></div>
+    <div style="padding:11px 12px;border-bottom:1px solid #f0f1f3;display:flex;flex-direction:column;gap:7px;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="width:52px;flex:none;font-size:11px;font-weight:600;color:#9aa3ac;">공장</span>
+        <select class="form-select" style="flex:1;" id="sel-factory" data-filter="factory">
+          <option value="all">전체</option>
+          ${factoryOptions.map(o=>`<option value="${e(o)}"${state.selFactory===o?' selected':''}>${e(o)}</option>`).join('')}
+        </select>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="width:52px;flex:none;font-size:11px;font-weight:600;color:#9aa3ac;">부서</span>
+        <select class="form-select" style="flex:1;" id="sel-dept-filter" data-filter="dept">
+          <option value="all">전체</option>
+          ${deptOptions.map(o=>`<option value="${e(o)}"${state.selDept===o?' selected':''}>${e(o)}</option>`).join('')}
+        </select>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="width:52px;flex:none;font-size:11px;font-weight:600;color:#9aa3ac;">하위조직</span>
+        <select class="form-select" style="flex:1;" id="sel-suborg" data-filter="suborg">
+          <option value="all">전체</option>
+          ${subOrgOptions.map(o=>`<option value="${e(o)}"${state.selSubOrg===o?' selected':''}>${e(o)}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div style="padding:10px 12px;border-bottom:1px solid #f0f1f3;">
+      <input id="search-personal" class="form-input" style="width:100%;" placeholder="이름 또는 사번 검색" value="${e(state.searchPersonal)}">
+    </div>
+    <div style="max-height:560px;overflow-y:auto;">
+      ${filteredWorkers.map(w=>`
+      <div class="worker-item${w.id===selW.id?' active':''}" data-worker-id="${e(w.id)}">
+        <span class="worker-name">${e(w.name)}</span>
+        <span class="worker-meta">${e(w.id)} · ${e(w.dept)} · ${e(w.subOrg)}</span>
+      </div>`).join('')}
+      ${filteredWorkers.length===0?'<div style="padding:20px;text-align:center;color:#9aa3ac;font-size:12px;">해당 작업자 없음</div>':''}
+    </div>
+  </div>
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #eef0f2;background:#fafbfc;">
+      <div style="display:flex;align-items:center;gap:16px;">
+        <span style="width:42px;height:42px;border-radius:50%;background:#3a4250;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;">${e(selW.name.charAt(0))}</span>
+        <div>
+          <div style="font-size:17px;font-weight:800;color:#2b3138;">${e(selW.name)} <span style="font-size:12px;font-weight:500;color:#9aa3ac;margin-left:4px;">${e(selW.id)}</span></div>
+          <div style="font-size:12px;color:#7a8591;margin-top:2px;">${e(selW.factory)} · ${e(selW.dept)} · ${e(selW.subOrg)} · 보호구 ${personalRecords.length}종</div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:#9aa3ac;text-align:right;line-height:1.5;">임박 ${selImminent}건 · 경과 ${selExpired}건<br>총 ${personalRecords.length}건 지급 이력</div>
+    </div>
+    <div class="ov-x">
+      <table class="tbl">
+        <thead><tr>
+          <th>보호구 종류</th><th>최근 지급일</th><th class="tc">수량</th><th>만료예정일</th><th>잔여일수</th><th>상태</th><th>출고번호</th>
+        </tr></thead>
+        <tbody>
+          ${personalRecords.length===0?`<tr><td colspan="7" style="text-align:center;color:#9aa3ac;padding:20px;">지급 이력 없음</td></tr>`:''}
+          ${personalRecords.map(r=>`
+          <tr>
+            <td style="font-weight:600;color:#2b3138;">${e(r.typeName)}</td>
+            <td>${e(r.issueStr)}</td>
+            <td class="tc">${e(r.qty)}</td>
+            <td>${e(r.expiryStr)}</td>
+            <td style="color:${r.color};font-weight:600;font-size:11.5px;">${e(r.dLeftText)}</td>
+            <td><span class="badge" style="color:${r.color};background:${r.bg};">${e(r.label)}</span></td>
+            <td style="font-size:11px;color:#9aa3ac;">${e(r.outNo)}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>`;
+  }
+
+  // ─── DEPT LEDGER ────────────────────────────────────────────────────────────
+  function renderDept() {
+    const c = computed();
+    const inDept = state.workers.filter(w => w.dept === state.deptTab);
+    return `
+<div class="card">
+  <div class="card-hd">
+    <div class="card-hd-left"><span class="sec-marker">▶</span><span class="sec-title">부서별 보호구 지급 매트릭스</span></div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <select class="form-select">
+        <option>기간: 전체</option><option>최근 3개월</option><option>최근 6개월</option>
+      </select>
+      <button class="btn-green" id="btn-export">⬇ 엑셀 내보내기</button>
+    </div>
+  </div>
+  <div class="tab-bar">
+    ${state.depts.map(dp=>`<div class="tab-item${dp===state.deptTab?' active':''}" data-dept-tab="${e(dp)}">${e(dp)}</div>`).join('')}
+  </div>
+  <div class="ov-x">
+    <table class="tbl" style="min-width:760px;">
+      <thead><tr>
+        <th style="position:sticky;left:0;background:#f2f3f5;width:150px;">작업자</th>
+        ${state.ppeTypes.map(t=>`<th class="tc" style="border-left:1px solid #eceef0;font-size:11px;">${e(t.name)}</th>`).join('')}
+      </tr></thead>
+      <tbody>
+        ${inDept.map(w=>`
+        <tr>
+          <td style="position:sticky;left:0;background:#fff;">
+            <div style="font-size:12.5px;font-weight:600;color:#2b3138;">${e(w.name)}</div>
+            <div style="font-size:10px;color:#9aa3ac;">${e(w.id)}</div>
+          </td>
+          ${state.ppeTypes.map(t => {
+            const r = c.curByKey[w.id+'|'+t.id];
+            if (r) return `<td style="border-left:1px solid #f4f5f6;text-align:center;vertical-align:middle;padding:6px 8px;">
+              <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
+                <span style="display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:700;color:${r.color};"><span style="width:7px;height:7px;border-radius:50%;background:${r.dot};"></span>${e(r.label)}</span>
+                <span style="font-size:10px;color:#9aa3ac;">${e(r.issueStr)}</span>
+              </div>
+            </td>`;
+            return `<td class="tc" style="border-left:1px solid #f4f5f6;padding:6px 8px;"><span style="color:#d2d6db;font-size:13px;">–</span></td>`;
+          }).join('')}
+        </tr>`).join('')}
+        ${inDept.length===0?`<tr><td colspan="${state.ppeTypes.length+1}" style="text-align:center;color:#9aa3ac;padding:20px;">해당 부서 작업자 없음</td></tr>`:''}
+      </tbody>
+    </table>
+  </div>
+</div>`;
+  }
+
+  // ─── ALARM MANAGEMENT ──────────────────────────────────────────────────────
+  function renderAlarm() {
+    const c = computed();
+    let alarmRows = c.current.filter(r => r.status==='imminent'||r.status==='expired');
+    if (state.alarmStatus !== 'all') alarmRows = alarmRows.filter(r => r.status === state.alarmStatus);
+    if (state.alarmDept !== 'all') alarmRows = alarmRows.filter(r => r.dept === state.alarmDept);
+    alarmRows = alarmRows.sort((a,b) => a.daysLeft - b.daysLeft);
+
+    return `
+<div class="flex-col gap-14">
+  <div class="card">
+    <div class="card-hd">
+      <div class="card-hd-left"><span class="sec-marker">▶</span><span class="sec-title">만료 임박·경과 목록</span></div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <select class="form-select" id="alarm-status-sel">
+          <option value="all"${state.alarmStatus==='all'?' selected':''}>상태: 전체</option>
+          <option value="imminent"${state.alarmStatus==='imminent'?' selected':''}>임박</option>
+          <option value="expired"${state.alarmStatus==='expired'?' selected':''}>경과</option>
+        </select>
+        <select class="form-select" id="alarm-dept-sel">
+          <option value="all"${state.alarmDept==='all'?' selected':''}>부서: 전체</option>
+          ${state.depts.map(d=>`<option value="${e(d)}"${state.alarmDept===d?' selected':''}>${e(d)}</option>`).join('')}
+        </select>
+        <span style="font-size:11px;color:#9aa3ac;">총 ${alarmRows.length}건</span>
+      </div>
+    </div>
+    <div class="ov-x" style="max-height:340px;overflow-y:auto;">
+      <table class="tbl">
+        <thead><tr>
+          <th class="sticky-t">대상</th><th class="sticky-t">부서</th><th class="sticky-t">보호구</th>
+          <th class="sticky-t">지급일</th><th class="sticky-t">만료예정일</th><th class="sticky-t">잔여</th><th class="sticky-t">상태</th>
+        </tr></thead>
+        <tbody>
+          ${alarmRows.length===0?`<tr><td colspan="7" style="text-align:center;color:#9aa3ac;padding:20px;">해당 항목 없음</td></tr>`:''}
+          ${alarmRows.map(r=>`
+          <tr>
+            <td style="font-weight:600;color:#2b3138;">${e(r.name)}</td>
+            <td style="font-size:12px;color:#7a8591;">${e(r.dept)}</td>
+            <td>${e(r.typeName)}</td>
+            <td>${e(r.issueStr)}</td>
+            <td>${e(r.expiryStr)}</td>
+            <td style="color:${r.color};font-weight:700;font-size:11.5px;">${e(r.dLeftText)}</td>
+            <td><span class="badge" style="color:${r.color};background:${r.bg};">${e(r.label)}</span></td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="two-col-15">
+    <div class="card">
+      <div class="card-hd">
+        <div class="card-hd-left"><span class="sec-marker">▶</span><span class="sec-title">알람 발송 이력</span></div>
+        <span class="card-meta">최근 14일</span>
+      </div>
+      <div class="ov-x" style="max-height:300px;overflow-y:auto;">
+        <table class="tbl">
+          <thead><tr>
+            <th>대상</th><th>보호구</th><th>발송일시</th><th>채널</th><th>사유</th>
+          </tr></thead>
+          <tbody>
+            ${state.alarmHistory.map(h=>`
+            <tr>
+              <td style="font-weight:600;color:#2b3138;">${e(h.target)} <span style="font-weight:400;color:#9aa3ac;font-size:10.5px;">${e(h.dept)}</span></td>
+              <td>${e(h.ppe)}</td>
+              <td style="font-size:12px;">${e(h.date)}</td>
+              <td style="font-size:12px;">${e(h.ch)}</td>
+              <td><span class="badge" style="color:${h.color};background:${h.bg};">${e(h.reason)}</span></td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-hd"><div class="card-hd-left"><span class="sec-marker">▶</span><span class="sec-title">알람 기준 설정</span></div></div>
+      <div style="padding:16px;display:flex;flex-direction:column;gap:16px;">
+        <div>
+          <div style="font-size:12px;color:#5b6671;font-weight:600;margin-bottom:8px;">만료 사전 알람 (일)</div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span style="font-size:11px;color:#9aa3ac;">1차</span>
+            <input id="pre1-input" type="number" class="form-input" style="width:70px;" value="${state.pre1}">
+            <span style="font-size:11px;color:#9aa3ac;">일 전 · 2차</span>
+            <input id="pre2-input" type="number" class="form-input" style="width:70px;" value="${state.pre2}">
+            <span style="font-size:11px;color:#9aa3ac;">일 전</span>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:12px;color:#5b6671;font-weight:600;margin-bottom:8px;">발송 채널</div>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#3b424a;cursor:pointer;">
+              <input type="checkbox" id="ch-email" style="accent-color:#F5821F;width:15px;height:15px;"${state.chEmail?' checked':''}>이메일
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#3b424a;cursor:pointer;">
+              <input type="checkbox" id="ch-sms" style="accent-color:#F5821F;width:15px;height:15px;"${state.chSms?' checked':''}>SMS
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#3b424a;cursor:pointer;">
+              <input type="checkbox" id="ch-app" style="accent-color:#F5821F;width:15px;height:15px;"${state.chApp?' checked':''}>사내 메신저
+            </label>
+          </div>
+        </div>
+        <button class="btn-orange" id="btn-save-settings" style="padding:9px;width:100%;font-size:13px;border-radius:4px;">기준 저장</button>
+      </div>
+    </div>
+  </div>
+</div>`;
+  }
+
+  // ─── PPE MASTER DATA ────────────────────────────────────────────────────────
+  function renderMaster() {
+    return `
+<div class="card">
+  <div class="card-hd">
+    <div class="card-hd-left"><span class="sec-marker">▶</span><span class="sec-title">보호구 기준정보</span></div>
+    <button class="btn-orange" id="btn-add-type">＋ 행 추가</button>
+  </div>
+  <div class="ov-x">
+    <table class="tbl">
+      <thead><tr>
+        <th>종류명</th>
+        <th style="width:140px;">사용기한 (개월)</th>
+        <th style="width:140px;">알람 기준일 (일 전)</th>
+        <th>비고</th>
+        <th class="tc" style="width:60px;">관리</th>
+      </tr></thead>
+      <tbody id="master-tbody">
+        ${state.ppeTypes.map(t=>`
+        <tr data-type-id="${e(t.id)}">
+          <td style="padding:6px 12px;"><input class="form-input-full" data-field="name" value="${e(t.name)}" style="font-weight:600;color:#2b3138;"></td>
+          <td style="padding:6px 12px;"><input type="number" class="form-input-sm" data-field="months" value="${t.months}"></td>
+          <td style="padding:6px 12px;"><input type="number" class="form-input-sm" data-field="alarmDays" value="${t.alarmDays}"></td>
+          <td style="padding:6px 12px;"><input class="form-input-full" data-field="note" value="${e(t.note)}" style="color:#7a8591;"></td>
+          <td style="padding:6px 12px;text-align:center;"><span class="remove-type" data-type-id="${e(t.id)}" style="cursor:pointer;color:#c0c6cc;font-size:16px;" title="삭제">✕</span></td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+  </div>
+  <div style="padding:11px 14px;font-size:11px;color:#9aa3ac;border-top:1px solid #f0f1f3;">＊ 사용기한·알람 기준일 변경 시 모든 지급 이력의 상태(정상/임박/경과)가 즉시 재계산됩니다.</div>
+</div>`;
+  }
+
+  // ─── SETTINGS ──────────────────────────────────────────────────────────────
+  function renderSettings() {
+    return `
+<div class="flex-col gap-14">
+  <div class="two-col-eq">
+    <div class="card">
+      <div class="card-hd"><div class="card-hd-left"><span class="sec-marker">▶</span><span class="sec-title">자재창고 출고 연동 상태</span></div></div>
+      <div style="padding:18px;display:flex;flex-direction:column;gap:14px;">
+        <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:#f1f8f3;border:1px solid #cfe7d6;border-radius:5px;">
+          <span style="width:9px;height:9px;border-radius:50%;background:#2f9e5b;flex:none;"></span>
+          <div style="flex:1;">
+            <div style="font-size:13px;font-weight:700;color:#1f7a45;">정상 연동 중</div>
+            <div style="font-size:11.5px;color:#5b8a6c;">자재창고 WMS와 실시간 동기화</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:11px;color:#9aa3ac;">최근 동기화</div>
+            <div style="font-size:12.5px;font-weight:700;color:#2b3138;">${e(state.lastSync)}</div>
+          </div>
+        </div>
+        <div style="font-size:12px;color:#7a8591;line-height:1.6;">출고 처리가 발생하면 별도 입력 없이 지급 이력 1건이 자동으로 대장에 추가되고, 사용기한 상태가 자동 계산됩니다. 정비 엔지니어의 수기 대장 관리가 필요 없습니다.</div>
+        <button class="btn-orange-lg" id="btn-simulate">▶ 출고 발생 시뮬레이션 실행</button>
+        <div style="font-size:10.5px;color:#9aa3ac;text-align:center;">버튼을 누르면 임의 출고가 발생해 지급 이력에 자동 반영됩니다 (대시보드·연동 로그 확인).</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-hd"><div class="card-hd-left"><span class="sec-marker">▶</span><span class="sec-title">성공 지표</span></div></div>
+      <div style="padding:18px;display:flex;flex-direction:column;gap:12px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:10px;border-bottom:1px solid #f0f1f3;">
+          <span style="font-size:12.5px;color:#5b6671;">지급 내역 누락</span>
+          <span style="font-size:20px;font-weight:800;color:#2f9e5b;">0건</span>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:10px;border-bottom:1px solid #f0f1f3;">
+          <span style="font-size:12.5px;color:#5b6671;">사용기한 경과 미인지</span>
+          <span style="font-size:20px;font-weight:800;color:#2f9e5b;">0건</span>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <span style="font-size:12.5px;color:#5b6671;">수기 대장 관리 시간</span>
+          <span style="font-size:20px;font-weight:800;color:#F5821F;">▼ 100%</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-hd"><div class="card-hd-left"><span class="sec-marker">▶</span><span class="sec-title">연동 로그</span></div></div>
+    <div class="ov-x" style="max-height:340px;overflow-y:auto;">
+      <table class="tbl">
+        <thead><tr>
+          <th>동기화 시각</th><th>유형</th><th class="tc">건수</th><th>내용</th><th>결과</th>
+        </tr></thead>
+        <tbody>
+          ${state.syncLog.map(l=>`
+          <tr>
+            <td style="font-size:12px;">${e(l.time)}</td>
+            <td style="font-size:12px;">${e(l.type)}</td>
+            <td class="tc" style="font-weight:600;">${e(l.count)}</td>
+            <td style="font-size:12px;">${e(l.detail)}</td>
+            <td><span class="badge" style="color:#1f7a45;background:#e6f4ea;">${e(l.status)}</span></td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>`;
+  }
+
+  // ─── toast & flash ─────────────────────────────────────────────────────────
+  function showToast(msg) {
+    const el = document.getElementById('toast');
+    document.getElementById('toast-msg').textContent = msg;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 3200);
+  }
+
+  // ─── shipment simulation ───────────────────────────────────────────────────
+  function addShipment() {
+    const w = state.workers[Math.floor(Math.random() * state.workers.length)];
+    const pool = ['gloves','dustmask','earplug','goggle','cartridge','shoes'];
+    const tid = pool[Math.floor(Math.random() * pool.length)];
+    const t = state.ppeTypes.find(x => x.id === tid) || {name:tid};
+    const seq = state.shipSeq + 1;
+    const k = fmtDate(TODAY).replace(/-/g,'');
+    const outNo = 'OUT-'+k+'-'+String(seq).padStart(3,'0');
+    const now = new Date();
+    const timeStr = fmtDate(TODAY)+' '+String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+    const rec = { id:'R'+Date.now(), workerId:w.id, typeId:tid, qty:tid==='gloves'?5:(tid==='earplug'?10:1), issueDate:fmtDate(TODAY), outNo };
+    const log = { time:timeStr, type:'자동', count:1, detail:w.dept+' '+w.name+' '+t.name+' 출고 반영', status:'성공' };
+    state.records = [rec, ...state.records];
+    state.syncLog = [log, ...state.syncLog];
+    state.lastSync = timeStr;
+    state.shipSeq = seq;
+    state.flashId = rec.id;
+    clearTimeout(flashTimer);
+    flashTimer = setTimeout(() => { state.flashId = null; if (state.screen === 'dashboard') renderScreen(); }, 2600);
+    showToast('출고 연동 완료 — '+w.name+' / '+t.name+' 지급 이력이 자동 추가되었습니다.');
+    renderScreen();
+    updateTopbar();
+    updateSidebar();
+  }
+
+  // ─── master table live update ───────────────────────────────────────────────
+  function bindMasterEvents() {
+    const tbody = document.getElementById('master-tbody');
+    if (!tbody) return;
+    tbody.addEventListener('input', ev => {
+      const inp = ev.target;
+      const row = inp.closest('tr[data-type-id]');
+      if (!row) return;
+      const tid = row.dataset.typeId;
+      const field = inp.dataset.field;
+      if (!field) return;
+      const t = state.ppeTypes.find(x => x.id === tid);
+      if (!t) return;
+      if (field === 'months' || field === 'alarmDays') t[field] = parseInt(inp.value, 10) || 0;
+      else t[field] = inp.value;
+    });
+    document.getElementById('btn-add-type')?.addEventListener('click', () => {
+      state.ppeTypes.push({ id:'t'+Date.now(), name:'새 보호구', months:12, alarmDays:14, note:'' });
+      renderScreen();
+      bindMasterEvents();
+      showToast('보호구 기준 행을 추가했습니다.');
+    });
+    tbody.querySelectorAll('.remove-type').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tid = btn.dataset.typeId;
+        state.ppeTypes = state.ppeTypes.filter(t => t.id !== tid);
+        renderScreen();
+        bindMasterEvents();
+      });
+    });
+  }
+
+  // ─── render screen ─────────────────────────────────────────────────────────
+  function renderScreen() {
+    const content = document.getElementById('content');
+    switch (state.screen) {
+      case 'dashboard': content.innerHTML = renderDashboard(); break;
+      case 'personal':  content.innerHTML = renderPersonal();  bindPersonalEvents(); break;
+      case 'dept':      content.innerHTML = renderDept();      bindDeptEvents();     break;
+      case 'alarm':     content.innerHTML = renderAlarm();     bindAlarmEvents();    break;
+      case 'master':    content.innerHTML = renderMaster();    bindMasterEvents();   break;
+      case 'settings':  content.innerHTML = renderSettings();  bindSettingsEvents(); break;
+    }
+  }
+
+  // ─── event bindings per screen ─────────────────────────────────────────────
+  function bindPersonalEvents() {
+    document.getElementById('search-personal')?.addEventListener('input', ev => {
+      const pos = ev.target.selectionStart;
+      state.searchPersonal = ev.target.value;
+      renderScreen();
+      const inp = document.getElementById('search-personal');
+      if (inp) { inp.focus(); try { inp.setSelectionRange(pos, pos); } catch(_){} }
+    });
+    document.getElementById('sel-factory')?.addEventListener('change', ev => {
+      state.selFactory = ev.target.value; state.selDept = 'all'; state.selSubOrg = 'all';
+      renderScreen();
+    });
+    document.getElementById('sel-dept-filter')?.addEventListener('change', ev => {
+      state.selDept = ev.target.value; state.selSubOrg = 'all';
+      renderScreen();
+    });
+    document.getElementById('sel-suborg')?.addEventListener('change', ev => {
+      state.selSubOrg = ev.target.value;
+      renderScreen();
+    });
+    document.querySelectorAll('.worker-item[data-worker-id]').forEach(el => {
+      el.addEventListener('click', () => {
+        state.selectedWorkerId = el.dataset.workerId;
+        renderScreen();
+      });
+    });
+  }
+
+  function bindDeptEvents() {
+    document.querySelectorAll('.tab-item[data-dept-tab]').forEach(el => {
+      el.addEventListener('click', () => {
+        state.deptTab = el.dataset.deptTab;
+        renderScreen();
+      });
+    });
+    document.getElementById('btn-export')?.addEventListener('click', () => {
+      showToast('부서별 지급대장 엑셀을 생성했습니다. (데모)');
+    });
+  }
+
+  function bindAlarmEvents() {
+    document.getElementById('alarm-status-sel')?.addEventListener('change', ev => {
+      state.alarmStatus = ev.target.value; renderScreen();
+    });
+    document.getElementById('alarm-dept-sel')?.addEventListener('change', ev => {
+      state.alarmDept = ev.target.value; renderScreen();
+    });
+    document.getElementById('pre1-input')?.addEventListener('input', ev => { state.pre1 = parseInt(ev.target.value,10)||0; });
+    document.getElementById('pre2-input')?.addEventListener('input', ev => { state.pre2 = parseInt(ev.target.value,10)||0; });
+    document.getElementById('ch-email')?.addEventListener('change', ev => { state.chEmail = ev.target.checked; });
+    document.getElementById('ch-sms')?.addEventListener('change', ev => { state.chSms = ev.target.checked; });
+    document.getElementById('ch-app')?.addEventListener('change', ev => { state.chApp = ev.target.checked; });
+    document.getElementById('btn-save-settings')?.addEventListener('click', () => {
+      showToast('알람 기준을 저장했습니다. ('+state.pre1+'일 · '+state.pre2+'일 전)');
+    });
+  }
+
+  function bindSettingsEvents() {
+    document.getElementById('btn-simulate')?.addEventListener('click', () => addShipment());
+  }
+
+  // ─── global event delegation ────────────────────────────────────────────────
+  function bindGlobalEvents() {
+    document.getElementById('toggle-sb').addEventListener('click', () => {
+      state.collapsed = !state.collapsed;
+      updateSidebar();
+    });
+    document.getElementById('sb-nav').addEventListener('click', ev => {
+      const item = ev.target.closest('[data-nav]');
+      if (!item) return;
+      state.screen = item.dataset.nav;
+      updateSidebar();
+      updateTopbar();
+      renderScreen();
+    });
+  }
+
+  // ─── init ──────────────────────────────────────────────────────────────────
+  function init() {
+    updateSidebar();
+    updateTopbar();
+    bindGlobalEvents();
+    renderScreen();
+  }
+
+  return { init };
+})();
+
+document.addEventListener('DOMContentLoaded', () => APP.init());
+</script>
+</body>
+</html>
