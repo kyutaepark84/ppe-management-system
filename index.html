@@ -199,6 +199,25 @@ import { getFirestore, collection, doc,
          writeBatch, getDocs }
                                    from 'https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js';
 
+// ─── PPE 법정 기준정보 (Gemini 2.5 Flash 조회, 산업안전보건법/KOSHA Guide 기준) ─────
+const PPE_SEED_DATA = [
+  {name:'안전모',              months:24, lifeType:'기간형',   alarmDays:30, legalBasis:'KOSHA Guide C-10-2016',     note:'합성수지제 기준(FRP 60개월). 충격·손상 시 즉시 교체'},
+  {name:'안전화',              months:0,  lifeType:'성능소진형',alarmDays:0,  legalBasis:'산업안전보건법 고용노동부 고시', note:'마모·손상 시 즉시 교체. 사용 환경에 따라 상이'},
+  {name:'안전장갑',            months:0,  lifeType:'성능소진형',alarmDays:0,  legalBasis:'산업안전보건법 고용노동부 고시', note:'손상·오염 시 즉시 교체. 용도별 상이'},
+  {name:'방진마스크',          months:0,  lifeType:'성능소진형',alarmDays:0,  legalBasis:'산업안전보건법 고용노동부 고시', note:'호흡 곤란·오염·손상 시 즉시 교체. 필터는 분진 포집량에 따라'},
+  {name:'방독마스크(정화통)',  months:0,  lifeType:'성능소진형',alarmDays:0,  legalBasis:'산업안전보건법 고용노동부 고시', note:'냄새 감지·호흡 곤란·제조사 권장 사용시간 초과 시 교체'},
+  {name:'귀마개',              months:0,  lifeType:'성능소진형',alarmDays:0,  legalBasis:'산업안전보건법 고용노동부 고시', note:'오염·손상·탄성 저하 시 즉시 교체'},
+  {name:'귀덮개',              months:0,  lifeType:'성능소진형',alarmDays:0,  legalBasis:'산업안전보건법 고용노동부 고시', note:'패드 손상·탄성 저하 시 즉시 교체'},
+  {name:'보안경',              months:0,  lifeType:'성능소진형',alarmDays:0,  legalBasis:'산업안전보건법 고용노동부 고시', note:'렌즈 긁힘·손상·프레임 파손 시 즉시 교체'},
+  {name:'보안면',              months:0,  lifeType:'성능소진형',alarmDays:0,  legalBasis:'산업안전보건법 고용노동부 고시', note:'렌즈 긁힘·손상·프레임 파손 시 즉시 교체'},
+  {name:'안전대(벨트형)',      months:24, lifeType:'기간형',   alarmDays:30, legalBasis:'KOSHA Guide C-10-2016',     note:'추락 경험·손상·변형·오염 시 즉시 교체'},
+  {name:'안전대(안전그네형)',  months:24, lifeType:'기간형',   alarmDays:30, legalBasis:'KOSHA Guide C-10-2016',     note:'추락 경험·손상·변형·오염 시 즉시 교체'},
+  {name:'용접용 보안면',       months:0,  lifeType:'성능소진형',alarmDays:0,  legalBasis:'산업안전보건법 고용노동부 고시', note:'렌즈 긁힘·손상·프레임 파손 시 즉시 교체'},
+  {name:'방열복',              months:0,  lifeType:'성능소진형',alarmDays:0,  legalBasis:'산업안전보건법 고용노동부 고시', note:'손상·오염·기능 저하 시 즉시 교체'},
+  {name:'화학물질용 보호복',   months:0,  lifeType:'성능소진형',alarmDays:0,  legalBasis:'산업안전보건법 고용노동부 고시', note:'손상·오염·기능 저하 시 즉시 교체'},
+  {name:'절연장갑',            months:0,  lifeType:'성능소진형',alarmDays:0,  legalBasis:'산업안전보건법 고용노동부 고시', note:'손상·오염 시 교체. 6개월마다 절연 성능 시험 권장'},
+];
+
 const WORKER_SEED_DATA = [
 {f:"PVC공장",d:"PVC생산1팀",s:"사무실",n:"강성훈",e:"199911098"},
 {f:"PVC공장",d:"PVC생산1팀",s:"사무실",n:"김창욱",e:"201103559"},
@@ -818,10 +837,16 @@ function getDepts() {
 
 function derive(r) {
   const TODAY = today();
-  const t = state.ppeTypes.find(x => x.id === r.typeId) || { id:r.typeId, name:r.typeId, months:12, alarmDays:14 };
+  const t = state.ppeTypes.find(x => x.id === r.typeId) || { id:r.typeId, name:r.typeId, months:12, alarmDays:14, lifeType:'기간형' };
   const w = state.workers.find(x => x.id === r.workerId) || { id:r.workerId, name:'-', dept:'-', factory:'-', subOrg:'-' };
-  const issue  = new Date(r.issueDate);
-  const expiry = addMonths(issue, t.months);
+  const issue = new Date(r.issueDate);
+  const isPerf = t.lifeType === '성능소진형' || t.months === 0;
+  if (isPerf) {
+    return { ...r, typeName:t.name, dept:w.dept, factory:w.factory, subOrg:w.subOrg, name:w.name,
+      issueStr:fmtDate(issue), expiryStr:'성능소진시', daysLeft:null, dLeftText:'성능소진시',
+      status:'normal', label:'정상', color:'#6b7785', bg:'#f1f3f5', dot:'#aab2bb' };
+  }
+  const expiry   = addMonths(issue, t.months);
   const daysLeft = Math.floor((expiry - TODAY) / 86400000);
   let status, label, color, bg, dot;
   if (daysLeft < 0)               { status='expired';  label='경과'; color='#d63b30'; bg='#fdecea'; dot='#d63b30'; }
@@ -1286,22 +1311,28 @@ function renderMaster() {
     : `<div class="ov-x"><table class="tbl">
     <thead><tr>
       <th>종류명</th>
-      <th style="width:140px;">사용기한 (개월)</th>
-      <th style="width:140px;">알람 기준일 (일 전)</th>
+      <th style="width:100px;">교체유형</th>
+      <th style="width:120px;">사용기한 (개월)</th>
+      <th style="width:130px;">알람 기준일 (일 전)</th>
       <th>비고</th>
       <th class="tc" style="width:60px;">관리</th>
     </tr></thead>
     <tbody id="master-tbody">
-      ${state.ppeTypes.map(t=>`<tr data-type-id="${esc(t.id)}">
+      ${state.ppeTypes.map(t=>{
+        const isPerf = t.lifeType === '성능소진형' || t.months === 0;
+        return `<tr data-type-id="${esc(t.id)}">
         <td style="padding:6px 12px;"><input class="form-input-full" data-field="name" value="${esc(t.name)}" style="font-weight:600;color:#2b3138;"></td>
-        <td style="padding:6px 12px;"><input type="number" class="form-input-sm" data-field="months" value="${t.months}"></td>
-        <td style="padding:6px 12px;"><input type="number" class="form-input-sm" data-field="alarmDays" value="${t.alarmDays}"></td>
+        <td style="padding:6px 12px;text-align:center;">
+          <span class="badge" style="color:${isPerf?'#6b7785':'#1a6faa'};background:${isPerf?'#f1f3f5':'#e6f2fb'};">${isPerf?'성능소진형':'기간형'}</span>
+        </td>
+        <td style="padding:6px 12px;"><input type="number" class="form-input-sm" data-field="months" value="${t.months}" ${isPerf?'disabled style="background:#f8f8f8;color:#aaa;"':''}></td>
+        <td style="padding:6px 12px;"><input type="number" class="form-input-sm" data-field="alarmDays" value="${t.alarmDays}" ${isPerf?'disabled style="background:#f8f8f8;color:#aaa;"':''}></td>
         <td style="padding:6px 12px;"><input class="form-input-full" data-field="note" value="${esc(t.note||'')}" style="color:#7a8591;"></td>
         <td style="padding:6px 12px;text-align:center;"><span class="remove-type" data-type-id="${esc(t.id)}" style="cursor:pointer;color:#c0c6cc;font-size:16px;" title="삭제">✕</span></td>
-      </tr>`).join('')}
+      </tr>`;}).join('')}
     </tbody>
   </table></div>`}
-  <div style="padding:11px 14px;font-size:11px;color:#9aa3ac;border-top:1px solid #f0f1f3;">＊ 사용기한·알람 기준일 변경 시 모든 지급 이력의 상태(정상/임박/경과)가 즉시 재계산됩니다. 변경 내용은 Firestore에 자동 저장됩니다.</div>
+  <div style="padding:11px 14px;font-size:11px;color:#9aa3ac;border-top:1px solid #f0f1f3;">＊ 기간형은 사용기한·알람 기준일 기준으로 상태(정상/임박/경과)가 자동 계산됩니다. 성능소진형은 상태가 항상 정상으로 표시되며 현장에서 직접 교체 판단합니다. 변경 내용은 Firestore에 자동 저장됩니다.</div>
 </div>`;
 }
 
@@ -1344,6 +1375,36 @@ function renderSettings() {
           <span style="font-size:15px;font-weight:800;color:#2b3138;">${val}</span>
         </div>`).join('')}
       </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-hd">
+      <div class="card-hd-left"><span class="sec-marker">▶</span><span class="sec-title">보호구 기준정보 일괄 등록</span></div>
+      <span class="card-meta">Gemini 2.5 Flash 조회 · 산업안전보건법/KOSHA Guide 기준 15종</span>
+    </div>
+    <div style="padding:18px;display:flex;flex-direction:column;gap:12px;">
+      <div style="font-size:12.5px;color:#5b6671;line-height:1.65;">
+        고용노동부 고시 및 KOSHA Guide 기준 법정 개인보호구 사용기한 15종을 Firestore <b>ppeTypes</b> 컬렉션에 등록합니다.<br>
+        <b>기간형</b>(안전모·안전대 등)은 사용기한이 자동 계산되고, <b>성능소진형</b>(안전화·마스크류 등)은 상태가 항상 정상으로 표시됩니다.
+      </div>
+      <div style="overflow-x:auto;"><table class="tbl" style="font-size:12px;">
+        <thead><tr><th>보호구명</th><th>유형</th><th>사용기한</th><th>알람 기준</th><th>법적 근거</th></tr></thead>
+        <tbody>
+          ${PPE_SEED_DATA.map(p=>`<tr>
+            <td style="font-weight:600;">${esc(p.name)}</td>
+            <td><span class="badge" style="color:${p.lifeType==='기간형'?'#1a6faa':'#6b7785'};background:${p.lifeType==='기간형'?'#e6f2fb':'#f1f3f5'};">${esc(p.lifeType)}</span></td>
+            <td>${p.months?p.months+'개월':'성능소진시'}</td>
+            <td>${p.alarmDays?p.alarmDays+'일 전':'-'}</td>
+            <td style="font-size:11px;color:#9aa3ac;">${esc(p.legalBasis)}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table></div>
+      <div style="display:flex;gap:10px;align-items:center;justify-content:flex-end;">
+        <button class="btn-orange" id="btn-import-ppe" style="padding:9px 18px;font-size:13px;">
+          ▶ 보호구 기준정보 15종 일괄 등록
+        </button>
+      </div>
+      <div id="import-ppe-progress" style="display:none;font-size:12px;color:#F5821F;font-weight:600;"></div>
     </div>
   </div>
   <div class="card">
@@ -1489,7 +1550,54 @@ function bindMasterEvents() {
 
 function bindSettingsEvents() {
   document.getElementById('btn-simulate')?.addEventListener('click', addShipment);
+  document.getElementById('btn-import-ppe')?.addEventListener('click', importPpeTypes);
   document.getElementById('btn-import-workers')?.addEventListener('click', importWorkers);
+}
+
+// ─── Firestore write: bulk import PPE types ──────────────────────────────────
+async function importPpeTypes() {
+  const btn  = document.getElementById('btn-import-ppe');
+  const prog = document.getElementById('import-ppe-progress');
+  if (!btn || !prog) return;
+  if (!confirm('기존 보호구 기준정보를 모두 삭제하고 법정 기준 15종을 새로 등록합니다.\n계속하시겠습니까?')) return;
+
+  btn.disabled = true;
+  btn.textContent = '처리 중...';
+  prog.style.display = 'block';
+  prog.style.color = '#F5821F';
+  prog.textContent = '① 기존 보호구 데이터 삭제 중...';
+
+  try {
+    const snap = await getDocs(collection(db, 'ppeTypes'));
+    const batch = writeBatch(db);
+    snap.docs.forEach(d => batch.delete(d.ref));
+    if (snap.docs.length > 0) await batch.commit();
+
+    prog.textContent = '② 법정 기준 15종 등록 중...';
+    const batch2 = writeBatch(db);
+    PPE_SEED_DATA.forEach(p => {
+      batch2.set(doc(collection(db, 'ppeTypes')), {
+        name:       p.name,
+        months:     p.months,
+        lifeType:   p.lifeType,
+        alarmDays:  p.alarmDays,
+        legalBasis: p.legalBasis,
+        note:       p.note,
+      });
+    });
+    await batch2.commit();
+
+    prog.textContent = '✔ 완료: 법정 보호구 기준정보 15종 등록 완료';
+    prog.style.color = '#2f9e5b';
+    showToast('법정 보호구 기준정보 15종을 Firestore에 등록했습니다.');
+  } catch (err) {
+    prog.textContent = '오류: ' + err.message;
+    prog.style.color = '#d63b30';
+    showToast('등록 실패: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '▶ 보호구 기준정보 15종 일괄 등록';
+  }
 }
 
 // ─── Firestore write: bulk import workers ────────────────────────────────────
