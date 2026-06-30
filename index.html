@@ -1816,19 +1816,50 @@ function handleXlsUpload(ev) {
 
 function downloadXlsTemplate() {
   if (typeof XLSX === 'undefined') { showToast('SheetJS 라이브러리가 로드되지 않았습니다.'); return; }
-  const HDR = ['사번','성명','공장','부서','하위조직','보호구종류','지급일','수량','만료예정일','출고번호'];
-  const COLS = [14,10,10,16,14,18,12,6,14,20].map(w=>({wch:w}));
 
-  // ── Sheet 1: 지급대장 (예시 행 2개) ────────────────────────────────────────
-  const ws1 = XLSX.utils.aoa_to_sheet([
-    HDR,
-    ['199911098','홍길동','PVC공장','PVC생산1팀','사무실','안전모','2024-01-15','1','2026-01-15','OUT-20240115-001'],
-    ['199911098','홍길동','PVC공장','PVC생산1팀','사무실','안전화','2024-01-15','1','','OUT-20240115-002'],
-  ]);
-  ws1['!cols'] = COLS;
+  // PPE 기준 목록 (Firestore 우선, 없으면 내장 시드)
+  const ppeTypeList = state.ppeTypes.length > 0 ? state.ppeTypes : PPE_SEED_DATA;
+  const ppeNames = ppeTypeList.map(t => t.name);
 
-  // ── Sheet 2: 예시 템플릿 — 전체 작업자 사번/성명/공장/부서/하위조직 미리 채움 ──
-  // Firestore 작업자 우선, 없으면 내장 WORKER_SEED_DATA 479명 사용
+  // ── 숨김 시트: PPE기준 (VLOOKUP 참조용 — 보호구명:사용월수) ─────────────────
+  const wsRef = XLSX.utils.aoa_to_sheet(ppeTypeList.map(t => [t.name, t.months || 0]));
+  wsRef['!cols'] = [{wch:22},{wch:6}];
+
+  // ── Sheet 1: 지급대장 ────────────────────────────────────────────────────────
+  const HDR1 = ['사번','성명','공장','부서','하위조직','보호구종류','지급일','수량','만료예정일','출고번호'];
+  // 만료예정일 자동계산 공식: 보호구 사용월수 VLOOKUP → EDATE, 0월=성능소진형
+  const expiryFml = r =>
+    `IFERROR(IF(OR(F${r}="",G${r}=""),"",` +
+    `IF(VLOOKUP(F${r},PPE기준!$A:$B,2,0)=0,"성능소진시",` +
+    `TEXT(EDATE(IF(ISNUMBER(G${r}),G${r},DATEVALUE(G${r})),` +
+    `VLOOKUP(F${r},PPE기준!$A:$B,2,0)),"YYYY-MM-DD"))),"")`;
+
+  const ws1 = XLSX.utils.aoa_to_sheet([HDR1]);
+  ws1['!cols'] = [14,10,10,16,14,18,12,6,14,20].map(w=>({wch:w}));
+
+  // 예시 행 2개 (보호구종류 각각 첫번째·두번째)
+  const ex1 = [String(199911098),'홍길동','PVC공장','PVC생산1팀','사무실',ppeNames[0]||'안전모','2024-01-15','1',null,''];
+  const ex2 = [String(199911098),'홍길동','PVC공장','PVC생산1팀','사무실',ppeNames[1]||'안전화','2024-01-15','1',null,''];
+  XLSX.utils.sheet_add_aoa(ws1, [ex1, ex2], {origin:{r:1,c:0}});
+
+  // 만료예정일 셀에 수식 직접 설정 (I열 = index 8)
+  ws1['I2'] = { t:'f', f: expiryFml(2) };
+  ws1['I3'] = { t:'f', f: expiryFml(3) };
+
+  // 보호구종류(F열) 드롭다운 데이터 유효성 검사
+  ws1['!dataValidation'] = [{
+    type: 'list',
+    sqref: 'F2:F50000',
+    formula1: `"${ppeNames.join(',')}"`,
+    showDropDown: false,
+    showErrorMessage: true,
+    errorStyle: 'stop',
+    errorTitle: '입력 오류',
+    error: `보호구 기준정보에 등록된 종류를 선택하세요.\n(${ppeNames.join(', ')})`
+  }];
+
+  // ── Sheet 2: 작업자 LIST — 사번~하위조직(A~E열)만, F열 이후 없음 ──────────────
+  const HDR2 = ['사번','성명','공장','부서','하위조직'];
   let workerSource = state.workers && state.workers.length > 0
     ? state.workers
     : WORKER_SEED_DATA.map(w => ({ employeeId:w.e, name:w.n, factory:w.f, dept:w.d, subOrg:w.s }));
@@ -1843,20 +1874,25 @@ function downloadXlsTemplate() {
     return (a.name||'').localeCompare(b.name||'', 'ko');
   });
 
-  const tmplRows = [HDR];
-  sorted.forEach(w => tmplRows.push([
-    String(w.employeeId||w.id||''), w.name||'', w.factory||'', w.dept||'', w.subOrg||'',
-    '', '', '', '', ''   // 보호구종류~출고번호: 사용자가 직접 입력
-  ]));
-  const ws2 = XLSX.utils.aoa_to_sheet(tmplRows);
-  ws2['!cols'] = COLS;
+  const ws2Rows = [HDR2, ...sorted.map(w => [
+    String(w.employeeId||w.id||''), w.name||'', w.factory||'', w.dept||'', w.subOrg||''
+  ])];
+  const ws2 = XLSX.utils.aoa_to_sheet(ws2Rows);
+  ws2['!cols'] = [14,10,12,16,16].map(w=>({wch:w}));
 
   // ── 워크북 조립 ─────────────────────────────────────────────────────────────
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws1, '지급대장');
-  XLSX.utils.book_append_sheet(wb, ws2, '예시 템플릿');
+  XLSX.utils.book_append_sheet(wb, ws2, '작업자 LIST');
+  XLSX.utils.book_append_sheet(wb, wsRef, 'PPE기준');
+
+  // PPE기준 시트 숨김 처리
+  wb.Workbook = wb.Workbook || {};
+  wb.Workbook.Sheets = wb.Workbook.Sheets || [];
+  wb.Workbook.Sheets[2] = { Hidden: 1 };
+
   XLSX.writeFile(wb, 'PPE지급대장_업로드양식.xlsx');
-  showToast(`양식 다운로드 완료 — 예시 템플릿에 작업자 ${sorted.length}명 포함`);
+  showToast(`양식 다운로드 완료 — 보호구 ${ppeNames.length}종 · 작업자 ${sorted.length}명`);
 }
 
 // ─── Bulk records upload ──────────────────────────────────────────────────────
