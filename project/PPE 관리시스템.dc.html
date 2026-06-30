@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;}
+body{margin:0;background:#eef0f2;}
+input,select,button,textarea{font-family:inherit;}
+::-webkit-scrollbar{width:9px;height:9px;}
+::-webkit-scrollbar-thumb{background:#cbd0d6;border-radius:5px;}
+::-webkit-scrollbar-track{background:transparent;}
+</style>
+</helmet>
+<div id="app-root" style="display:flex;min-height:100vh;font-family:'Noto Sans KR','Malgun Gothic','맑은 고딕',system-ui,sans-serif;color:#333;background:#eef0f2;">
+
+  <!-- ===== SIDEBAR ===== -->
+  <div style="width:{{ sidebarWidth }};flex:none;background:#222831;display:flex;flex-direction:column;transition:width .15s;position:sticky;top:0;align-self:flex-start;height:100vh;">
+    <div style="height:56px;display:flex;align-items:center;gap:10px;padding:0 16px;border-bottom:1px solid #313945;">
+      <span style="width:26px;height:26px;flex:none;background:#F5821F;border-radius:5px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px;">P</span>
+      <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="color:#fff;font-weight:700;font-size:14px;letter-spacing:-.3px;">PPE 관리시스템</span></sc-if>
+    </div>
+    <div style="flex:1;padding:8px 0;overflow-y:auto;">
+      <sc-for list="{{ menu }}" as="m" hint-placeholder-count="6">
+        <div onClick="{{ m.go }}" title="{{ m.label }}" style="display:flex;align-items:center;gap:11px;padding:11px 16px;cursor:pointer;color:{{ m.color }};background:{{ m.bg }};border-left:3px solid {{ m.bar }};font-weight:{{ m.weight }};font-size:13px;">
+          <span style="width:18px;text-align:center;font-size:15px;flex:none;">{{ m.icon }}</span>
+          <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ m.label }}</span></sc-if>
+        </div>
+      </sc-for>
+    </div>
+    <div style="padding:12px 16px;border-top:1px solid #313945;font-size:10.5px;color:#7a8694;">
+      <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><div>v2.4 · 사내 설비관리</div></sc-if>
+    </div>
+  </div>
+
+  <!-- ===== MAIN COLUMN ===== -->
+  <div style="flex:1;display:flex;flex-direction:column;min-width:0;">
+
+    <!-- TOP BAR -->
+    <div style="height:56px;flex:none;background:#fff;border-bottom:1px solid #e1e4e8;display:flex;align-items:center;padding:0 20px;gap:16px;position:sticky;top:0;z-index:5;">
+      <span onClick="{{ onToggleCollapse }}" style="cursor:pointer;font-size:18px;color:#6b7785;width:24px;text-align:center;">☰</span>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="color:#F5821F;font-size:9px;">▶</span>
+        <span style="font-weight:700;font-size:16px;color:#2b3138;letter-spacing:-.3px;">{{ pageTitle }}</span>
+      </div>
+      <div style="flex:1;"></div>
+      <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:#8a93a0;padding:5px 11px;background:#f4f6f8;border-radius:20px;">
+        <span style="width:7px;height:7px;border-radius:50%;background:#2f9e5b;flex:none;"></span>
+        출고연동 정상 · 최근 {{ lastSync }}
+      </div>
+      <div style="position:relative;cursor:pointer;">
+        <span style="font-size:18px;color:#6b7785;">🔔</span>
+        <span style="position:absolute;top:-5px;right:-7px;min-width:16px;height:16px;padding:0 4px;background:#d63b30;color:#fff;font-size:10px;font-weight:700;border-radius:9px;display:flex;align-items:center;justify-content:center;">{{ bellCount }}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:9px;padding-left:14px;border-left:1px solid #e8eaed;">
+        <span style="width:32px;height:32px;border-radius:50%;background:#3a4250;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;">정</span>
+        <div style="line-height:1.25;">
+          <div style="font-size:12.5px;font-weight:700;color:#2b3138;">{{ userName }}</div>
+          <div style="font-size:10.5px;color:#9aa3ac;">{{ userDept }} · 정비 엔지니어</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONTENT -->
+    <div style="flex:1;padding:18px 22px;overflow-y:auto;">
+
+      <!-- ============ DASHBOARD ============ -->
+      <sc-if value="{{ scrDashboard }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
+          <sc-for list="{{ summary }}" as="c" hint-placeholder-count="4">
+            <div style="background:#fff;border:1px solid #e6e8eb;border-top:3px solid {{ c.accent }};border-radius:5px;padding:15px 17px;">
+              <div style="font-size:12px;color:#7a8591;font-weight:500;">{{ c.label }}</div>
+              <div style="display:flex;align-items:baseline;gap:5px;margin-top:9px;">
+                <span style="font-size:32px;font-weight:800;color:{{ c.numColor }};line-height:1;">{{ c.value }}</span>
+                <span style="font-size:13px;color:#9aa3ac;">건</span>
+              </div>
+              <div style="font-size:11px;color:#9aa3ac;margin-top:7px;">{{ c.sub }}</div>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1.65fr 1fr;gap:14px;align-items:start;">
+          <div style="display:flex;flex-direction:column;gap:14px;min-width:0;">
+            <!-- 부서별 현황 그리드 -->
+            <div style="background:#fff;border:1px solid #e6e8eb;border-radius:5px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 14px;border-bottom:1px solid #eef0f2;">
+                <div style="display:flex;align-items:center;gap:7px;"><span style="color:#F5821F;font-size:9px;">▶</span><span style="font-weight:700;font-size:14px;color:#2b3138;">부서별 사용기한 현황</span></div>
+                <span style="font-size:11px;color:#9aa3ac;">기준일 2026-06-30 · 최신 지급 기준</span>
+              </div>
+              <div style="overflow-x:auto;">
+                <table style="width:100%;border-collapse:collapse;">
+                  <thead><tr>
+                    <th style="padding:8px 10px;background:#f2f3f5;color:#5b6671;font-weight:600;font-size:11.5px;text-align:left;border-bottom:1px solid #e6e8eb;white-space:nowrap;width:96px;">상태 ＼ 부서</th>
+                    <sc-for list="{{ depts }}" as="dp" hint-placeholder-count="5"><th style="padding:8px 10px;background:#f2f3f5;color:#5b6671;font-weight:600;font-size:11.5px;text-align:center;border-bottom:1px solid #e6e8eb;white-space:nowrap;">{{ dp }}</th></sc-for>
+                    <th style="padding:8px 10px;background:#ebedf0;color:#5b6671;font-weight:700;font-size:11.5px;text-align:center;border-bottom:1px solid #e6e8eb;">합계</th>
+                  </tr></thead>
+                  <tbody>
+                    <sc-for list="{{ deptGrid }}" as="row" hint-placeholder-count="3">
+                    <tr>
+                      <td style="padding:8px 10px;border-bottom:1px solid #f0f1f3;"><span style="display:inline-block;padding:2px 10px;border-radius:11px;font-size:11px;font-weight:700;color:#fff;background:{{ row.color }};">{{ row.label }}</span></td>
+                      <sc-for list="{{ row.cells }}" as="cell" hint-placeholder-count="5">
+                        <td style="padding:8px 10px;border-bottom:1px solid #f0f1f3;text-align:center;font-size:15px;font-weight:{{ cell.weight }};color:{{ cell.color }};">{{ cell.count }}</td>
+                      </sc-for>
+                      <td style="padding:8px 10px;border-bottom:1px solid #f0f1f3;text-align:center;font-size:15px;font-weight:800;color:{{ row.color }};background:#fafbfc;">{{ row.total }}</td>
+                    </tr>
+                    </sc-for>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- 최근 지급 내역 -->
+            <div style="background:#fff;border:1px solid #e6e8eb;border-radius:5px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 14px;border-bottom:1px solid #eef0f2;">
+                <div style="display:flex;align-items:center;gap:7px;"><span style="color:#F5821F;font-size:9px;">▶</span><span style="font-weight:700;font-size:14px;color:#2b3138;">최근 지급 내역</span></div>
+                <span style="font-size:11px;color:#9aa3ac;">출고 데이터 자동 반영 · 최신순</span>
+              </div>
+              <div style="overflow-x:auto;">
+                <table style="width:100%;border-collapse:collapse;">
+                  <thead><tr>
+                    <th style="padding:8px 10px;background:#f2f3f5;color:#5b6671;font-weight:600;font-size:11.5px;text-align:left;border-bottom:1px solid #e6e8eb;">작업자</th>
+                    <th style="padding:8px 10px;background:#f2f3f5;color:#5b6671;font-weight:600;font-size:11.5px;text-align:left;border-bottom:1px solid #e6e8eb;">보호구</th>
+                    <th style="padding:8px 10px;background:#f2f3f5;color:#5b6671;font-weight:600;font-size:11.5px;text-align:left;border-bottom:1px solid #e6e8eb;">지급일</th>
+                    <th style="padding:8px 10px;background:#f2f3f5;color:#5b6671;font-weight:600;font-size:11.5px;text-align:left;border-bottom:1px solid #e6e8eb;">만료예정일</th>
+                    <th style="padding:8px 10px;background:#f2f3f5;color:#5b6671;font-weight:600;font-size:11.5px;text-align:left;border-bottom:1px solid #e6e8eb;">상태</th>
+                    <th style="padding:8px 10px;background:#f2f3f5;color:#5b6671;font-weight:600;font-size:11.5px;text-align:left;border-bottom:1px solid #e6e8eb;">출고번호</th>
+                  </tr></thead>
+                  <tbody>
+                    <sc-for list="{{ recentList }}" as="r" hint-placeholder-count="8">
+                    <tr style="background:{{ r.rowBg }};">
+                      <td style="padding:7px 10px;border-bottom:1px solid #f0f1f3;white-space:nowrap;"><div style="font-size:12.5px;font-weight:600;color:#2b3138;">{{ r.name }}<sc-if value="{{ r.isNew }}" hint-placeholder-val="{{ false }}"><span style="margin-left:5px;font-size:9px;font-weight:800;color:#fff;background:#F5821F;padding:1px 5px;border-radius:3px;">NEW</span></sc-if></div><div style="font-size:10.5px;color:#9aa3ac;">{{ r.dept }}</div></td>
+                      <td style="padding:7px 10px;border-bottom:1px solid #f0f1f3;font-size:12.5px;color:#3b424a;">{{ r.typeName }}</td>
+                      <td style="padding:7px 10px;border-bottom:1px solid #f0f1f3;font-size:12.5px;color:#3b424a;">{{ r.issueStr }}</td>
+                      <td style="padding:7px 10px;border-bottom:1px solid #f0f1f3;font-size:12.5px;color:#3b424a;">{{ r.expiryStr }}</td>
+                      <td style="padding:7px 10px;border-bottom:1px solid #f0f1f3;"><span style="display:inline-block;padding:2px 9px;border-radius:11px;font-size:11px;font-weight:700;color:{{ r.color }};background:{{ r.bg }};">{{ r.label }}</span></td>
+                      <td style="padding:7px 10px;border-bottom:1px solid #f0f1f3;font-size:11px;color:#9aa3ac;font-feature-settings:'tnum';">{{ r.outNo }}</td>
+                    </tr>
+                    </sc-for>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- 오늘의 알람 -->
+          <div style="background:#fff;border:1px solid #e6e8eb;border-radius:5px;align-self:stretch;">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 14px;border-bottom:1px solid #eef0f2;">
+              <div style="display:flex;align-items:center;gap:7px;"><span style="color:#F5821F;font-size:9px;">▶</span><span style="font-weight:700;font-size:14px;color:#2b3138;">오늘의 알람</span></div>
+              <span style="font-size:11px;font-weight:700;color:#d63b30;">{{ bellCount }}건</span>
+            </div>
+            <div style="max-height:520px;overflow-y:auto;">
+              <sc-for list="{{ todayAlarms }}" as="a" hint-placeholder-count="7">
+                <div style="display:flex;align-items:center;gap:10px;padding:10px 13px;border-bottom:1px solid #f0f1f3;">
+                  <span style="width:8px;height:8px;border-radius:50%;background:{{ a.dot }};flex:none;"></span>
+                  <div style="flex:1;min-width:0;">
+                    <div style="font-size:12.5px;color:#2b3138;font-weight:600;">{{ a.name }} <span style="font-weight:400;color:#9aa3ac;font-size:10.5px;">{{ a.dept }}</span></div>
+                    <div style="font-size:11.5px;color:#7a8591;">{{ a.typeName }}</div>
+                  </div>
+                  <div style="text-align:right;flex:none;">
+                    <span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:10.5px;font-weight:700;color:{{ a.color }};background:{{ a.bg }};">{{ a.label }}</span>
+                    <div style="font-size:10.5px;color:#9aa3ac;margin-top:3px;">{{ a.dLeftText }}</div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- ============ 개인별 지급대장 ============ -->
+      <sc-if value="{{ scrPersonal }}" hint-placeholder-val="{{ false }}">
+      <div style="display:grid;grid-template-columns:268px 1fr;gap:14px;align-items:start;">
+        <div style="background:#fff;border:1px solid #e6e8eb;border-radius:5px;">
+          <div style="padding:11px 14px;border-bottom:1px solid #eef0f2;display:flex;align-items:center;gap:7px;"><span style="color:#F5821F;font-size:9px;">▶</span><span style="font-weight:700;font-size:14px;color:#2b3138;">작업자 선택</span></div>
+          <div style="padding:11px 12px;border-bottom:1px solid #f0f1f3;display:flex;flex-direction:column;gap:7px;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="width:52px;flex:none;font-size:11px;font-weight:600;color:#9aa3ac;">공장</span>
+              <select value="{{ selFactory }}" onChange="{{ onSelFactory }}" style="flex:1;padding:6px 9px;border:1px solid #d8dce0;border-radius:4px;font-size:12px;color:#3b424a;outline:none;background:#fff;">
+                <option value="all">전체</option>
+                <sc-for list="{{ factoryOptions }}" as="o" hint-placeholder-count="2"><option value="{{ o }}">{{ o }}</option></sc-for>
+              </select>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="width:52px;flex:none;font-size:11px;font-weight:600;color:#9aa3ac;">부서</span>
+              <select value="{{ selDept }}" onChange="{{ onSelDept }}" style="flex:1;padding:6px 9px;border:1px solid #d8dce0;border-radius:4px;font-size:12px;color:#3b424a;outline:none;background:#fff;">
+                <option value="all">전체</option>
+                <sc-for list="{{ deptOptions }}" as="o" hint-placeholder-count="5"><option value="{{ o }}">{{ o }}</option></sc-for>
+              </select>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="width:52px;flex:none;font-size:11px;font-weight:600;color:#9aa3ac;">하위조직</span>
+              <select value="{{ selSubOrg }}" onChange="{{ onSelSubOrg }}" style="flex:1;padding:6px 9px;border:1px solid #d8dce0;border-radius:4px;font-size:12px;color:#3b424a;outline:none;background:#fff;">
+                <option value="all">전체</option>
+                <sc-for list="{{ subOrgOptions }}" as="o" hint-placeholder-count="2"><option value="{{ o }}">{{ o }}</option></sc-for>
+              </select>
+            </div>
+          </div>
+          <div style="padding:10px 12px;border-bottom:1px solid #f0f1f3;">
+            <input value="{{ searchPersonal }}" onInput="{{ onSearch }}" placeholder="이름 또는 사번 검색" style="width:100%;padding:7px 10px;border:1px solid #d8dce0;border-radius:4px;font-size:12.5px;outline:none;" />
+          </div>
+          <div style="max-height:560px;overflow-y:auto;">
+            <sc-for list="{{ workerList }}" as="w" hint-placeholder-count="10">
+              <div onClick="{{ w.onClick }}" style="display:flex;flex-direction:column;gap:1px;padding:9px 13px;cursor:pointer;border-bottom:1px solid #f3f4f6;background:{{ w.bg }};border-left:3px solid {{ w.bar }};">
+                <span style="font-size:12.5px;font-weight:600;color:{{ w.nameColor }};">{{ w.name }}</span>
+                <span style="font-size:10.5px;color:#9aa3ac;">{{ w.empNo }} · {{ w.dept }} · {{ w.subOrg }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="background:#fff;border:1px solid #e6e8eb;border-radius:5px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #eef0f2;background:#fafbfc;">
+            <div style="display:flex;align-items:center;gap:16px;">
+              <span style="width:42px;height:42px;border-radius:50%;background:#3a4250;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;">{{ sel.initial }}</span>
+              <div>
+                <div style="font-size:17px;font-weight:800;color:#2b3138;">{{ sel.name }} <span style="font-size:12px;font-weight:500;color:#9aa3ac;margin-left:4px;">{{ sel.empNo }}</span></div>
+                <div style="font-size:12px;color:#7a8591;margin-top:2px;">{{ sel.factory }} · {{ sel.dept }} · {{ sel.subOrg }} · 보호구 {{ selCount }}종</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;">
+              <span style="font-size:11px;color:#9aa3ac;text-align:right;line-height:1.5;">임박 {{ selImminent }}건 · 경과 {{ selExpired }}건<br>총 {{ selCount }}건 지급 이력</span>
+            </div>
+          </div>
+          <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;">
+              <thead><tr>
+                <th style="padding:8px 12px;background:#f2f3f5;color:#5b6671;font-weight:600;font-size:11.5px;text-align:left;border-bottom:1px solid #e6e8eb;">보호구 종류</th>
+                <th style="padding:8px 12px;background:#f2f3f5;color:#5b6671;font-weight:600;font-size:11.5px;text-align:left;border-bottom:1px solid #e6e8eb;">최근 지급일</th>
+                <th style="padding:8px 12px;background:#f2f3f5;color:#5b6671;font-weight:600;font-size:11.5px;text-align:center;border-bottom:1px solid #e6e8eb;">수량</th>
+                <th style="padding:8px 12px;background:#f2f3f5;color:#5b6671;font-weight:600;font-size:11.5px;text-align:left;border-bottom:1px solid #e6e8eb;">만료예정일</th>
+                <th style="padding:8px 12px;background:#f2f3f5;color:#5b6671;font-weight:600;font-size:11.5px;text-align:left;border-bottom:1px solid #e6e8eb;">잔여일수</th>
+                <th style="padding:8px 12px;background:#f2f3f5;color:#5b6671;font-weight:600;font-size:11.5px;text-align:left;border-bottom:1px solid #e6e8eb;">상태</th>
+                <th style="padding:8px 12px;background:#f2f3f5;color:#5b6671;font-weight:600;font-size:11.5px;text-align:left;border-bottom:1px solid #e6e8eb;">출고번호</th>
+              </tr></thead>
+              <tbody>
+                <sc-for list="{{ personalRecords }}" as="r" hint-placeholder-count="6">
+                <tr>
+                  <td style="padding:8px 12px;border-bottom:1px solid #f0f1f3;font-size:12.5px;font-weight:600;color:#2b3138;">{{ r.typeName }}</td>
+                  <td style="padding:8px 12px;border-bottom:1px solid #f0f1f3;font-size:12.5px;color:#3b424a;">{{ r.issueStr }}</td>
+                  <td style="padding:8px 12px;border-bottom:1px solid #f0f1f3;font-size:12.5px;color:#3b424a;text-align:center;">{{ r.qty }}</td>
+                  <td style="padding:8px 12px;border-bottom:1px solid #f0f1f3;font-size:12.5px;color:#3b424a;">{{ r.expiryStr }}</td>
+                  <td style="padding:8px 12px;border-bottom:1px solid #f0f1f3;font-size:11.5px;color:{{ r.color }};font-weight:600;">{{ r.dLeftText }}</td>
+                  <td style="padding:8px 12px;border-bottom:1px solid #f0f1f3;"><span style="display:inline-block;padding:2px 9px;border-radius:11px;font-size:11px;font-weight:700;color:{{ r.color }};background:{{ r.bg }};">{{ r.label }}</span></td>
+                  <td style="padding:8px 12px;border-bottom:1px solid #f0f1f3;font-size:11px;color:#9aa3ac;">{{ r.outNo }}</td>
+                </tr>
+                </sc-for>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- ============ 부서별 지급대장 ============ -->
+      <sc-if value="{{ scrDept }}" hint-placeholder-val="{{ false }}">
+      <div style="background:#fff;border:1px solid #e6e8eb;border-radius:5px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 14px;border-bottom:1px solid #eef0f2;">
+          <div style="display:flex;align-items:center;gap:7px;"><span style="color:#F5821F;font-size:9px;">▶</span><span style="font-weight:700;font-size:14px;color:#2b3138;">부서별 보호구 지급 매트릭스</span></div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <select style="padding:5px 9px;border:1px solid #d8dce0;border-radius:4px;font-size:11.5px;color:#3b424a;outline:none;">
+              <option>기간: 전체</option><option>최근 3개월</option><option>최근 6개월</option>
+            </select>
+            <button onClick="{{ onExport }}" style="padding:6px 13px;background:#fff;border:1px solid #2f9e5b;color:#2f9e5b;border-radius:4px;font-size:12px;font-weight:700;cursor:pointer;">⬇ 엑셀 내보내기</button>
+          </div>
+        </div>
+        <div style="display:flex;gap:2px;padding:10px 14px 0;border-bottom:1px solid #eef0f2;">
+          <sc-for list="{{ deptTabs }}" as="t" hint-placeholder-count="5">
+            <div onClick="{{ t.onClick }}" style="padding:8px 16px;cursor:pointer;font-size:12.5px;font-weight:{{ t.weight }};color:{{ t.color }};border-bottom:2px solid {{ t.bar }};margin-bottom:-1px;">{{ t.name }}</div>
+          </sc-for>
+        </div>
+        <div style="overflow-x:auto;">
+          <table style="width:100%;border-collapse:collapse;min-width:760px;">
+            <thead><tr>
+              <th style="padding:8px 12px;background:#f2f3f5;color:#5b6671;font-weight:600;font-size:11.5px;text-align:left;border-bottom:1px solid #e6e8eb;position:sticky;left:0;background:#f2f3f5;width:150px;">작업자</th>
+              <sc-for list="{{ ppeTypes }}" as="t" hint-placeholder-count="8"><th style="padding:8px 8px;background:#f2f3f5;color:#5b6671;font-weight:600;font-size:11px;text-align:center;border-bottom:1px solid #e6e8eb;border-left:1px solid #eceef0;">{{ t.name }}</th></sc-for>
+            </tr></thead>
+            <tbody>
+              <sc-for list="{{ deptMatrix }}" as="row" hint-placeholder-count="4">
+              <tr>
+                <td style="padding:8px 12px;border-bottom:1px solid #f0f1f3;position:sticky;left:0;background:#fff;"><div style="font-size:12.5px;font-weight:600;color:#2b3138;">{{ row.worker.name }}</div><div style="font-size:10px;color:#9aa3ac;">{{ row.worker.id }}</div></td>
+                <sc-for list="{{ row.cells }}" as="cell" hint-placeholder-count="8">
+                  <td style="padding:6px 8px;border-bottom:1px solid #f0f1f3;border-left:1px solid #f4f5f6;text-align:center;vertical-align:middle;">
+                    <sc-if value="{{ cell.has }}" hint-placeholder-val="{{ true }}">
+                      <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
+                        <span style="display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:700;color:{{ cell.color }};"><span style="width:7px;height:7px;border-radius:50%;background:{{ cell.dot }};"></span>{{ cell.label }}</span>
+                        <span style="font-size:10px;color:#9aa3ac;">{{ cell.issueStr }}</span>
+                      </div>
+                    </sc-if>
+                    <sc-if value="{{ cell.empty }}" hint-placeholder-val="{{ false }}"><span style="color:#d2d6db;font-size:13px;">–</span></sc-if>
+                  </td>
+                </sc-for>
+              </tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- ============ 사용기한 / 알람 관리 ============ -->
+      <sc-if value="{{ scrAlarm }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <!-- 만료 목록 -->
+        <div style="background:#fff;border:1px solid #e6e8eb;border-radius:5px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 14px;border-bottom:1px solid #eef0f2;flex-wrap:wrap;gap:8px;">
+            <div style="display:flex;align-items:center;gap:7px;"><span style="color:#F5821F;font-size:9px;">▶</span><span style="font-weight:700;font-size:14px;color:#2b3138;">만료 임박·경과 목록</span></div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <select value="{{ alarmStatus }}" onChange="{{ onAlarmStatus }}" style="padding:5px 9px;border:1px solid #d8dce0;border-radius:4px;font-size:11.5px;color:#3b424a;outline:none;">
+                <option value="all">상태: 전체</option><option value="imminent">임박</option><option value="expired">경과</option>
+              </select>
+              <select value="{{ alarmDept }}" onChange="{{ onAlarmDept }}" style="padding:5px 9px;border:1px solid #d8dce0;border-radius:4px;font-size:11.5px;color:#3b424a;outline:none;">
+                <option value="all">부서: 전체</option><option value="기계정비1팀">기계정비1팀</option><option value="기계정비2팀">기계정비2팀</option><option value="전기정비팀">전기정비팀</option><option value="계장정비팀">계장정비팀</option><option value="용접팀">용접팀</option>
+              </select>
+              <span style="font-size:11px;color:#9aa3ac;">총 {{ alarmCount }}건</span>
+            </div>
+          </div>
+          <div style="overflow-x:auto;max-height:340px;overflow-y:auto;">
+            <table style="width:100%;border-collapse:collapse;">
+              <thead><tr>
+                <th style="padding:8px 12px;background:#f2f3f5;color:#5b6671;font-weight:600;font-size:11.5px;text-align:left;border-bottom:1px solid #e6e8eb;position:sticky;top:0;">대상</th>
+                <th style="padding:8px 12px;background:#f2f3f5;color:#5b6671;font-weight:600;font-size:11.5px;text-align:left;border-bottom:1px solid #e6e8eb;position:sticky;top:0;">부서</th>
+                <th style="padding:8px 12px;background:#f2f3f5;color:#5b6671;font-weight:600;font-size:11.5px;text-align:left;border-bottom:1px solid #e6e8eb;position:sticky;top:0;">보호구</th>
+                <th style="padding:8px 12px;background:#f2f3f5;color:#5b6671;font-weight:600;font-size:11.5px;text-align:left;border-bottom:1px solid #e6e8eb;position:sticky;top:0;">지급일</th>
+                <th style="padding:8px 12px;background:#f2f3f5;color:#5b6671;font-weight:600;font-size:11.5px;text-align:left;border-bottom:1px solid #e6e8eb;position:sticky;top:0;">만료예정일</th>
+                <th style="padding:8px 12px;background:#f2f3f5;color:#5b6671;font-weight:600;font-size:11.5px;text-align:left;border-bottom:1px solid #e6e8eb;position:sticky;top:0;">잔여</th>
+                <th style="padding:8px 12px;background:#f2f3f5;color:#5b6671;font-weight:600;font-size:11.5px;text-align:left;border-bottom:1px solid #e6e8eb;position:sticky;top:0;">상태</th>
+              </tr></thead>
+              <tbody>
+                <sc-for list="{{ alarmRows }}" as="r" hint-placeholder-count="6">
+                <tr>
+                  <td style="padding:8px 12px;border-bottom:1px solid #f0f1f3;font-size:12.5px;font-weight:600;color:#2b3138;">{{ r.name }}</td>
+                  <td style="padding:8px 12px;border-bottom:1px solid #f0f1f3;font-size:12px;color:#7a8591;">{{ r.dept }}</td>
+                  <td style="padding:8px 12px;border-bottom:1px solid #f0f1f3;font-size:12.5px;color:#3b424a;">{{ r.typeName }}</td>
+                  <td style="padding:8px 12px;border-bottom:1px solid #f0f1f3;font-size:12.5px;color:#3b424a;">{{ r.issueStr }}</td>
+                  <td style="padding:8px 12px;border-bottom:1px solid #f0f1f3;font-size:12.5px;color:#3b424a;">{{ r.expiryStr }}</td>
+                  <td style="padding:8px 12px;border-bottom:1px solid #f0f1f3;font-size:11.5px;font-weight:700;color:{{ r.color }};">{{ r.dLeftText }}</td>
+                  <td style="padding:8px 12px;border-bottom:1px solid #f0f1f3;"><span style="display:inline-block;padding:2px 9px;border-radius:11px;font-size:11px;font-weight:700;color:{{ r.color }};background:{{ r.bg }};">{{ r.label }}</span></td>
+                </tr>
+                </sc-for>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:14px;align-items:start;">
+          <!-- 발송 이력 -->
+          <div style="background:#fff;border:1px solid #e6e8eb;border-radius:5px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 14px;border-bottom:1px solid #eef0f2;">
+              <div style="display:flex;align-items:center;gap:7px;"><span style="color:#F5821F;font-size:9px;">▶</span><span style="font-weight:700;font-size:14px;color:#2b3138;">알람 발송 이력</span></div>
+              <span style="font-size:11px;color:#9aa3ac;">최근 14일</span>
+            </div>
+            <div style="overflow-x:auto;max-height:300px;overflow-y:auto;">
+              <table style="width:100%;border-collapse:collapse;">
+                <thead><tr>
+                  <th style="padding:8px 12px;background:#f2f3f5;color:#5b6671;font-weight:600;font-size:11.5px;text-align:left;border-bottom:1px solid #e6e8eb;">대상</th>
+                  <th style="padding:8px 12px;background:#f2f3f5;color:#5b6671;font-weight:600;font-size:11.5px;text-align:left;border-bottom:1px solid #e6e8eb;">보호구</th>
+                  <th style="padding:8px 12px;background:#f2f3f5;color:#5b6671;font-weight:600;font-size:11.5px;text-align:left;border-bottom:1px solid #e6e8eb;">발송일시</th>
+                  <th style="padding:8px 12px;background:#f2f3f5;color:#5b6671;font-weight:600;font-size:11.5px;text-align:left;border-bottom:1px solid #e6e8eb;">채널</th>
+                  <th style="padding:8px 12px;background:#f2f3f5;color:#5b6671;font-weight:600;font-size:11.5px;text-align:left;border-bottom:1px solid #e6e8eb;">사유</th>
+                </tr></thead>
+                <tbody>
+                  <sc-for list="{{ alarmHistory }}" as="h" hint-placeholder-count="6">
+                  <tr>
+                    <td style="padding:8px 12px;border-bottom:1px solid #f0f1f3;font-size:12.5px;color:#2b3138;font-weight:600;">{{ h.target }} <span style="font-weight:400;color:#9aa3ac;font-size:10.5px;">{{ h.dept }}</span></td>
+                    <td style="padding:8px 12px;border-bottom:1px solid #f0f1f3;font-size:12.5px;color:#3b424a;">{{ h.ppe }}</td>
+                    <td style="padding:8px 12px;border-bottom:1px solid #f0f1f3;font-size:12px;color:#3b424a;">{{ h.date }}</td>
+                    <td style="padding:8px 12px;border-bottom:1px solid #f0f1f3;font-size:12px;color:#3b424a;">{{ h.ch }}</td>
+                    <td style="padding:8px 12px;border-bottom:1px solid #f0f1f3;"><span style="display:inline-block;padding:2px 9px;border-radius:11px;font-size:11px;font-weight:700;color:{{ h.color }};background:{{ h.bg }};">{{ h.reason }}</span></td>
+                  </tr>
+                  </sc-for>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- 알람 기준 설정 -->
+          <div style="background:#fff;border:1px solid #e6e8eb;border-radius:5px;">
+            <div style="display:flex;align-items:center;gap:7px;padding:11px 14px;border-bottom:1px solid #eef0f2;"><span style="color:#F5821F;font-size:9px;">▶</span><span style="font-weight:700;font-size:14px;color:#2b3138;">알람 기준 설정</span></div>
+            <div style="padding:16px;display:flex;flex-direction:column;gap:16px;">
+              <div>
+                <div style="font-size:12px;color:#5b6671;font-weight:600;margin-bottom:8px;">만료 사전 알람 (일)</div>
+                <div style="display:flex;align-items:center;gap:10px;">
+                  <span style="font-size:11px;color:#9aa3ac;">1차</span>
+                  <input type="number" value="{{ pre1 }}" onInput="{{ onPre1 }}" style="width:70px;padding:6px 9px;border:1px solid #d8dce0;border-radius:4px;font-size:12.5px;outline:none;" />
+                  <span style="font-size:11px;color:#9aa3ac;">일 전 · 2차</span>
+                  <input type="number" value="{{ pre2 }}" onInput="{{ onPre2 }}" style="width:70px;padding:6px 9px;border:1px solid #d8dce0;border-radius:4px;font-size:12.5px;outline:none;" />
+                  <span style="font-size:11px;color:#9aa3ac;">일 전</span>
+                </div>
+              </div>
+              <div>
+                <div style="font-size:12px;color:#5b6671;font-weight:600;margin-bottom:8px;">발송 채널</div>
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                  <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#3b424a;cursor:pointer;"><input type="checkbox" checked="{{ chEmail }}" onChange="{{ onChEmail }}" style="accent-color:#F5821F;width:15px;height:15px;" />이메일</label>
+                  <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#3b424a;cursor:pointer;"><input type="checkbox" checked="{{ chSms }}" onChange="{{ onChSms }}" style="accent-color:#F5821F;width:15px;height:15px;" />SMS</label>
+                  <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#3b424a;cursor:pointer;"><input type="checkbox" checked="{{ chApp }}" onChange="{{ onChApp }}" style="accent-color:#F5821F;width:15px;height:15px;" />사내 메신저</label>
+                </div>
+              </div>
+              <button onClick="{{ onSaveSettings }}" style="padding:9px;background:#F5821F;border:none;color:#fff;border-radius:4px;font-size:13px;font-weight:700;cursor:pointer;">기준 저장</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- ============ 보호구 기준정보 ============ -->
+      <sc-if value="{{ scrMaster }}" hint-placeholder-val="{{ false }}">
+      <div style="background:#fff;border:1px solid #e6e8eb;border-radius:5px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 14px;border-bottom:1px solid #eef0f2;">
+          <div style="display:flex;align-items:center;gap:7px;"><span style="color:#F5821F;font-size:9px;">▶</span><span style="font-weight:700;font-size:14px;color:#2b3138;">보호구 기준정보</span></div>
+          <button onClick="{{ onAddType }}" style="padding:6px 13px;background:#F5821F;border:none;color:#fff;border-radius:4px;font-size:12px;font-weight:700;cursor:pointer;">＋ 행 추가</button>
+        </div>
+        <div style="overflow-x:auto;">
+          <table style="width:100%;border-collapse:collapse;">
+            <thead><tr>
+              <th style="padding:8px 12px;background:#f2f3f5;color:#5b6671;font-weight:600;font-size:11.5px;text-align:left;border-bottom:1px solid #e6e8eb;">종류명</th>
+              <th style="padding:8px 12px;background:#f2f3f5;color:#5b6671;font-weight:600;font-size:11.5px;text-align:left;border-bottom:1px solid #e6e8eb;width:140px;">사용기한 (개월)</th>
+              <th style="padding:8px 12px;background:#f2f3f5;color:#5b6671;font-weight:600;font-size:11.5px;text-align:left;border-bottom:1px solid #e6e8eb;width:140px;">알람 기준일 (일 전)</th>
+              <th style="padding:8px 12px;background:#f2f3f5;color:#5b6671;font-weight:600;font-size:11.5px;text-align:left;border-bottom:1px solid #e6e8eb;">비고</th>
+              <th style="padding:8px 12px;background:#f2f3f5;color:#5b6671;font-weight:600;font-size:11.5px;text-align:center;border-bottom:1px solid #e6e8eb;width:60px;">관리</th>
+            </tr></thead>
+            <tbody>
+              <sc-for list="{{ masterRows }}" as="t" hint-placeholder-count="8">
+              <tr>
+                <td style="padding:6px 12px;border-bottom:1px solid #f0f1f3;"><input value="{{ t.name }}" onInput="{{ t.onName }}" style="width:100%;padding:6px 8px;border:1px solid #e3e6e9;border-radius:4px;font-size:12.5px;font-weight:600;color:#2b3138;outline:none;" /></td>
+                <td style="padding:6px 12px;border-bottom:1px solid #f0f1f3;"><input type="number" value="{{ t.months }}" onInput="{{ t.onMonths }}" style="width:80px;padding:6px 8px;border:1px solid #e3e6e9;border-radius:4px;font-size:12.5px;color:#3b424a;outline:none;" /></td>
+                <td style="padding:6px 12px;border-bottom:1px solid #f0f1f3;"><input type="number" value="{{ t.alarmDays }}" onInput="{{ t.onAlarm }}" style="width:80px;padding:6px 8px;border:1px solid #e3e6e9;border-radius:4px;font-size:12.5px;color:#3b424a;outline:none;" /></td>
+                <td style="padding:6px 12px;border-bottom:1px solid #f0f1f3;"><input value="{{ t.note }}" onInput="{{ t.onNote }}" style="width:100%;padding:6px 8px;border:1px solid #e3e6e9;border-radius:4px;font-size:12px;color:#7a8591;outline:none;" /></td>
+                <td style="padding:6px 12px;border-bottom:1px solid #f0f1f3;text-align:center;"><span onClick="{{ t.remove }}" style="cursor:pointer;color:#c0c6cc;font-size:16px;" title="삭제">✕</span></td>
+              </tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </div>
+        <div style="padding:11px 14px;font-size:11px;color:#9aa3ac;border-top:1px solid #f0f1f3;">＊ 사용기한·알람 기준일 변경 시 모든 지급 이력의 상태(정상/임박/경과)가 즉시 재계산됩니다.</div>
+      </div>
+      </sc-if>
+
+      <!-- ============ 설정 / 출고 자동 연동 ============ -->
+      <sc-if value="{{ scrSettings }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start;">
+          <div style="background:#fff;border:1px solid #e6e8eb;border-radius:5px;">
+            <div style="display:flex;align-items:center;gap:7px;padding:11px 14px;border-bottom:1px solid #eef0f2;"><span style="color:#F5821F;font-size:9px;">▶</span><span style="font-weight:700;font-size:14px;color:#2b3138;">자재창고 출고 연동 상태</span></div>
+            <div style="padding:18px;display:flex;flex-direction:column;gap:14px;">
+              <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:#f1f8f3;border:1px solid #cfe7d6;border-radius:5px;">
+                <span style="width:9px;height:9px;border-radius:50%;background:#2f9e5b;flex:none;"></span>
+                <div style="flex:1;"><div style="font-size:13px;font-weight:700;color:#1f7a45;">정상 연동 중</div><div style="font-size:11.5px;color:#5b8a6c;">자재창고 WMS와 실시간 동기화</div></div>
+                <div style="text-align:right;"><div style="font-size:11px;color:#9aa3ac;">최근 동기화</div><div style="font-size:12.5px;font-weight:700;color:#2b3138;">{{ lastSync }}</div></div>
+              </div>
+              <div style="font-size:12px;color:#7a8591;line-height:1.6;">출고 처리가 발생하면 별도 입력 없이 지급 이력 1건이 자동으로 대장에 추가되고, 사용기한 상태가 자동 계산됩니다. 정비 엔지니어의 수기 대장 관리가 필요 없습니다.</div>
+              <button onClick="{{ onSync }}" style="padding:11px;background:#F5821F;border:none;color:#fff;border-radius:5px;font-size:13px;font-weight:700;cursor:pointer;">▶ 출고 발생 시뮬레이션 실행</button>
+              <div style="font-size:10.5px;color:#9aa3ac;text-align:center;">버튼을 누르면 임의 출고가 발생해 지급 이력에 자동 반영됩니다 (대시보드·연동 로그 확인).</div>
+            </div>
+          </div>
+
+          <div style="background:#fff;border:1px solid #e6e8eb;border-radius:5px;">
+            <div style="display:flex;align-items:center;gap:7px;padding:11px 14px;border-bottom:1px solid #eef0f2;"><span style="color:#F5821F;font-size:9px;">▶</span><span style="font-weight:700;font-size:14px;color:#2b3138;">성공 지표</span></div>
+            <div style="padding:18px;display:flex;flex-direction:column;gap:12px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:10px;border-bottom:1px solid #f0f1f3;">
+                <span style="font-size:12.5px;color:#5b6671;">지급 내역 누락</span><span style="font-size:20px;font-weight:800;color:#2f9e5b;">0건</span>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:10px;border-bottom:1px solid #f0f1f3;">
+                <span style="font-size:12.5px;color:#5b6671;">사용기한 경과 미인지</span><span style="font-size:20px;font-weight:800;color:#2f9e5b;">0건</span>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;">
+                <span style="font-size:12.5px;color:#5b6671;">수기 대장 관리 시간</span><span style="font-size:20px;font-weight:800;color:#F5821F;">▼ 100%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="background:#fff;border:1px solid #e6e8eb;border-radius:5px;">
+          <div style="display:flex;align-items:center;gap:7px;padding:11px 14px;border-bottom:1px solid #eef0f2;"><span style="color:#F5821F;font-size:9px;">▶</span><span style="font-weight:700;font-size:14px;color:#2b3138;">연동 로그</span></div>
+          <div style="overflow-x:auto;max-height:340px;overflow-y:auto;">
+            <table style="width:100%;border-collapse:collapse;">
+              <thead><tr>
+                <th style="padding:8px 12px;background:#f2f3f5;color:#5b6671;font-weight:600;font-size:11.5px;text-align:left;border-bottom:1px solid #e6e8eb;">동기화 시각</th>
+                <th style="padding:8px 12px;background:#f2f3f5;color:#5b6671;font-weight:600;font-size:11.5px;text-align:left;border-bottom:1px solid #e6e8eb;">유형</th>
+                <th style="padding:8px 12px;background:#f2f3f5;color:#5b6671;font-weight:600;font-size:11.5px;text-align:center;border-bottom:1px solid #e6e8eb;">건수</th>
+                <th style="padding:8px 12px;background:#f2f3f5;color:#5b6671;font-weight:600;font-size:11.5px;text-align:left;border-bottom:1px solid #e6e8eb;">내용</th>
+                <th style="padding:8px 12px;background:#f2f3f5;color:#5b6671;font-weight:600;font-size:11.5px;text-align:left;border-bottom:1px solid #e6e8eb;">결과</th>
+              </tr></thead>
+              <tbody>
+                <sc-for list="{{ syncLog }}" as="l" hint-placeholder-count="6">
+                <tr>
+                  <td style="padding:8px 12px;border-bottom:1px solid #f0f1f3;font-size:12px;color:#3b424a;">{{ l.time }}</td>
+                  <td style="padding:8px 12px;border-bottom:1px solid #f0f1f3;font-size:12px;color:#3b424a;">{{ l.type }}</td>
+                  <td style="padding:8px 12px;border-bottom:1px solid #f0f1f3;font-size:12.5px;color:#3b424a;text-align:center;font-weight:600;">{{ l.count }}</td>
+                  <td style="padding:8px 12px;border-bottom:1px solid #f0f1f3;font-size:12px;color:#3b424a;">{{ l.detail }}</td>
+                  <td style="padding:8px 12px;border-bottom:1px solid #f0f1f3;"><span style="display:inline-block;padding:2px 9px;border-radius:11px;font-size:11px;font-weight:700;color:#1f7a45;background:#e6f4ea;">{{ l.status }}</span></td>
+                </tr>
+                </sc-for>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <sc-if value="{{ toast }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;bottom:26px;left:50%;transform:translateX(-50%);background:#222831;color:#fff;padding:12px 20px;border-radius:6px;font-size:13px;font-weight:500;box-shadow:0 6px 24px rgba(0,0,0,.22);display:flex;align-items:center;gap:10px;z-index:50;">
+      <span style="width:8px;height:8px;border-radius:50%;background:#F5821F;flex:none;"></span>{{ toast }}
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;$preview&quot;: {&quot;width&quot;: 1440, &quot;height&quot;: 900},
+  &quot;defaultScreen&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;dashboard&quot;,&quot;personal&quot;,&quot;dept&quot;,&quot;alarm&quot;,&quot;master&quot;,&quot;settings&quot;], &quot;default&quot;: &quot;dashboard&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;표시&quot;},
+  &quot;liveSync&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: false, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;동작&quot;},
+  &quot;highContrastStatus&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: false, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;표시&quot;}
+}">
+class Component extends DCLogic {
+  constructor(props){
+    super(props);
+    this.TODAY = new Date(2026,5,30);
+    const d = this.buildData();
+    const allowed = ['dashboard','personal','dept','alarm','master','settings'];
+    const start = allowed.includes(this.props.defaultScreen) ? this.props.defaultScreen : 'dashboard';
+    this.state = {
+      screen: start,
+      records: d.records,
+      ppeTypes: d.ppeTypes,
+      workers: d.workers,
+      depts: d.depts,
+      selectedWorkerId: d.workers[0].id,
+      deptTab: d.depts[0],
+      collapsed: false,
+      alarmHistory: d.alarmHistory,
+      syncLog: d.syncLog,
+      lastSync: d.lastSync,
+      pre1: 30, pre2: 7,
+      chEmail: true, chSms: true, chApp: false,
+      searchPersonal: '',
+      selFactory: 'all', selDept: 'all', selSubOrg: 'all',
+      alarmStatus: 'all',
+      alarmDept: 'all',
+      flashId: null,
+      toast: '',
+      shipSeq: d.shipSeq,
+    };
+  }
+
+  componentDidMount(){ if(this.props.liveSync) this._startLive(); }
+  componentDidUpdate(prev){
+    if(prev.liveSync !== this.props.liveSync){
+      if(this.props.liveSync) this._startLive(); else this._stopLive();
+    }
+  }
+  componentWillUnmount(){ this._stopLive(); }
+  _startLive(){ this._stopLive(); this._timer = setInterval(()=>this.addShipment(), 13000); }
+  _stopLive(){ if(this._timer){ clearInterval(this._timer); this._timer=null; } }
+
+  addMonths(d,m){ const x=new Date(d.getTime()); x.setMonth(x.getMonth()+m); return x; }
+  fmtDate(d){ const y=d.getFullYear(), mo=String(d.getMonth()+1).padStart(2,'0'), da=String(d.getDate()).padStart(2,'0'); return y+'-'+mo+'-'+da; }
+  nowStamp(){ const n=new Date(); return this.fmtDate(this.TODAY)+' '+String(9+(n.getSeconds()%9)).padStart(2,'0')+':'+String(n.getSeconds()).padStart(2,'0'); }
+  typeById(id){ return this.state.ppeTypes.find(t=>t.id===id) || {id:id,name:id,months:12,alarmDays:14}; }
+  workerById(id){ return this.state.workers.find(w=>w.id===id) || {id:id,name:'-',dept:'-'}; }
+
+  derive(r){
+    const t=this.typeById(r.typeId);
+    const w=this.workerById(r.workerId);
+    const issue=new Date(r.issueDate);
+    const expiry=this.addMonths(issue, t.months);
+    const daysLeft=Math.floor((expiry - this.TODAY)/86400000);
+    const hc=!!this.props.highContrastStatus;
+    let status,label,color,bg,dot;
+    if(daysLeft<0){ status='expired'; label='경과'; color=hc?'#fff':'#d63b30'; bg=hc?'#d63b30':'#fdecea'; dot='#d63b30'; }
+    else if(daysLeft<=t.alarmDays){ status='imminent'; label='임박'; color=hc?'#fff':'#cf7012'; bg=hc?'#F5821F':'#fff3e3'; dot='#F5821F'; }
+    else { status='normal'; label='정상'; color=hc?'#fff':'#6b7785'; bg=hc?'#9aa3ac':'#f1f3f5'; dot='#aab2bb'; }
+    const dLeftText = daysLeft<0 ? (Math.abs(daysLeft)+'일 경과') : (daysLeft+'일 남음');
+    return Object.assign({}, r, { typeName:t.name, dept:w.dept, name:w.name, issueStr:this.fmtDate(issue), expiryStr:this.fmtDate(expiry), daysLeft, dLeftText, status, label, color, bg, dot });
+  }
+
+  buildData(){
+    const depts=['기계정비1팀','기계정비2팀','전기정비팀','계장정비팀','용접팀'];
+    const ppeTypes=[
+      {id:'helmet',name:'안전모',months:36,alarmDays:30,note:'충격 흡수 / 3년 주기 교체'},
+      {id:'shoes',name:'안전화',months:24,alarmDays:30,note:'밑창 마모 시 조기 교체'},
+      {id:'goggle',name:'보안경',months:12,alarmDays:14,note:'스크래치 발생 시 교체'},
+      {id:'dustmask',name:'방진마스크',months:6,alarmDays:14,note:'1급 / 분진 작업용'},
+      {id:'earplug',name:'귀마개',months:6,alarmDays:7,note:'NRR 25dB'},
+      {id:'gloves',name:'절단방지장갑',months:3,alarmDays:7,note:'Lv.5 / 박스당 5조'},
+      {id:'cartridge',name:'방독정화통',months:6,alarmDays:14,note:'유기가스용'},
+      {id:'harness',name:'안전대',months:12,alarmDays:30,note:'고소작업 필수'},
+    ];
+    const names=['김상우','박정훈','이도현','최민재','정우성','강태경','윤성호','임재현','한지훈','오세준','서동욱','신현우','조민기','배성훈','권혁준','남기태','문선재','류준영'];
+    const factoryOf={'기계정비1팀':'제1공장','기계정비2팀':'제1공장','전기정비팀':'제1공장','계장정비팀':'제2공장','용접팀':'제2공장'};
+    const subOrgsOf={'기계정비1팀':['1과 장치','1과 회전기'],'기계정비2팀':['2과 배관','2과 밸브'],'전기정비팀':['수전반','전동기'],'계장정비팀':['계측','제어'],'용접팀':['용접1반','용접2반']};
+    const workers=names.map((n,i)=>{ const dept=depts[i%depts.length]; const subs=subOrgsOf[dept]; return { id:'E'+(2031+i), name:n, dept, factory:factoryOf[dept], subOrg:subs[Math.floor(i/depts.length)%subs.length] }; });
+    let seed=987654321;
+    const rnd=()=>{ seed=(seed*1664525+1013904223)%4294967296; return seed/4294967296; };
+    const records=[]; let rid=1; const outSeq={};
+    const mkOut=(d)=>{ const k=this.fmtDate(d).replace(/-/g,''); outSeq[k]=(outSeq[k]||0)+1; return 'OUT-'+k+'-'+String(outSeq[k]).padStart(3,'0'); };
+    const makeRec=(w,tid,monthsAgo,dayJit)=>{ const t=ppeTypes.find(x=>x.id===tid); const issue=this.addMonths(this.TODAY,-monthsAgo); issue.setDate(issue.getDate()-dayJit); records.push({ id:'R'+(rid++), workerId:w.id, typeId:tid, qty: tid==='gloves'?5:(tid==='earplug'?10:1), issueDate:this.fmtDate(issue), outNo:mkOut(issue) }); };
+    const makeAt=(w,tid,daysLeft)=>{ const t=ppeTypes.find(x=>x.id===tid); const expiry=new Date(this.TODAY.getTime()+daysLeft*86400000); const issue=this.addMonths(expiry,-t.months); records.push({ id:'R'+(rid++), workerId:w.id, typeId:tid, qty: tid==='gloves'?5:(tid==='earplug'?10:1), issueDate:this.fmtDate(issue), outNo:mkOut(issue) }); };
+    const skip={ 4:['goggle'], 9:['shoes'], 14:['goggle','helmet'] };
+    workers.forEach((w,i)=>{
+      const base=['helmet','shoes','goggle']; const sk=skip[i]||[];
+      base.forEach(tid=>{ if(sk.indexOf(tid)>=0) return; const t=ppeTypes.find(x=>x.id===tid); makeRec(w,tid, Math.floor(rnd()*t.months*1.12), Math.floor(rnd()*28)); });
+      const extras=['dustmask','earplug','gloves','cartridge','harness'].filter(()=>rnd()>0.45);
+      if(w.dept==='용접팀' && extras.indexOf('cartridge')<0) extras.push('cartridge');
+      if(w.dept==='전기정비팀' && extras.indexOf('harness')<0) extras.push('harness');
+      extras.forEach(tid=>{ const t=ppeTypes.find(x=>x.id===tid); makeRec(w,tid, Math.floor(rnd()*t.months*1.12), Math.floor(rnd()*28)); });
+    });
+    // guaranteed demo states (latest record per worker+type wins)
+    makeAt(workers[1],'goggle',6); makeAt(workers[4],'dustmask',4); makeAt(workers[8],'earplug',2);
+    makeAt(workers[6],'harness',8); makeAt(workers[12],'shoes',13); makeAt(workers[3],'helmet',19);
+    makeAt(workers[10],'gloves',-9); makeAt(workers[2],'cartridge',-15); makeAt(workers[7],'goggle',-4); makeAt(workers[15],'earplug',-22);
+
+    const alarmHistory=[
+      {target:'박정훈',dept:'기계정비2팀',ppe:'보안경',date:'2026-06-29 09:00',ch:'이메일·SMS',reason:'임박',color:'#cf7012',bg:'#fff3e3'},
+      {target:'정우성',dept:'기계정비1팀',ppe:'방진마스크',date:'2026-06-28 09:00',ch:'SMS',reason:'임박',color:'#cf7012',bg:'#fff3e3'},
+      {target:'서동욱',dept:'기계정비2팀',ppe:'절단방지장갑',date:'2026-06-27 18:30',ch:'이메일',reason:'경과',color:'#d63b30',bg:'#fdecea'},
+      {target:'이도현',dept:'전기정비팀',ppe:'방독정화통',date:'2026-06-26 09:00',ch:'이메일·SMS',reason:'경과',color:'#d63b30',bg:'#fdecea'},
+      {target:'권혁준',dept:'전기정비팀',ppe:'귀마개',date:'2026-06-25 09:00',ch:'사내 메신저',reason:'경과',color:'#d63b30',bg:'#fdecea'},
+      {target:'한지훈',dept:'전기정비팀',ppe:'안전대',date:'2026-06-24 09:00',ch:'이메일',reason:'임박',color:'#cf7012',bg:'#fff3e3'},
+      {target:'문선재',dept:'전기정비팀',ppe:'안전화',date:'2026-06-22 09:00',ch:'SMS',reason:'임박',color:'#cf7012',bg:'#fff3e3'},
+    ];
+    const syncLog=[
+      {time:'2026-06-30 08:02',type:'자동',count:3,detail:'기계정비1팀 안전모 외 2건 출고 반영',status:'성공'},
+      {time:'2026-06-30 06:00',type:'정기',count:0,detail:'정기 동기화 (변동 없음)',status:'성공'},
+      {time:'2026-06-29 17:41',type:'자동',count:5,detail:'용접팀 방독정화통 외 4건 출고 반영',status:'성공'},
+      {time:'2026-06-29 11:20',type:'자동',count:1,detail:'전기정비팀 절단방지장갑 출고 반영',status:'성공'},
+      {time:'2026-06-29 08:00',type:'정기',count:2,detail:'기계정비2팀 보안경 외 1건 출고 반영',status:'성공'},
+      {time:'2026-06-28 16:05',type:'자동',count:4,detail:'계장정비팀 귀마개 외 3건 출고 반영',status:'성공'},
+    ];
+    return { depts, ppeTypes, workers, records, alarmHistory, syncLog, lastSync:'2026-06-30 08:02', shipSeq:18 };
+  }
+
+  // handlers
+  nav(s){ this.setState({screen:s}); }
+  toggleCollapse(){ this.setState(s=>({collapsed:!s.collapsed})); }
+  selectWorker(id){ this.setState({selectedWorkerId:id}); }
+  setDeptTab(d){ this.setState({deptTab:d}); }
+  showToast(msg){ this.setState({toast:msg}); clearTimeout(this._tt); this._tt=setTimeout(()=>this.setState({toast:''}),3000); }
+  updType(id,field,val){ this.setState(s=>({ ppeTypes:s.ppeTypes.map(t=> t.id===id ? Object.assign({},t,{[field]: (field==='months'||field==='alarmDays')?(parseInt(val,10)||0):val }) : t) })); }
+  addType(){ this.setState(s=>({ ppeTypes:[...s.ppeTypes, {id:'t'+Date.now(), name:'새 보호구', months:12, alarmDays:14, note:''}] })); this.showToast('보호구 기준 행을 추가했습니다.'); }
+  removeType(id){ this.setState(s=>({ ppeTypes:s.ppeTypes.filter(t=>t.id!==id) })); }
+  saveSettings(){ this.showToast('알람 기준을 저장했습니다. ('+this.state.pre1+'일 · '+this.state.pre2+'일 전)'); }
+  exportExcel(){ this.showToast('부서별 지급대장 엑셀을 생성했습니다. (데모)'); }
+
+  addShipment(){
+    const s=this.state;
+    const w=s.workers[Math.floor(Math.random()*s.workers.length)];
+    const pool=['gloves','dustmask','earplug','goggle','cartridge','shoes'];
+    const tid=pool[Math.floor(Math.random()*pool.length)];
+    const t=this.typeById(tid);
+    const seq=s.shipSeq+1;
+    const k=this.fmtDate(this.TODAY).replace(/-/g,'');
+    const outNo='OUT-'+k+'-'+String(seq).padStart(3,'0');
+    const rec={ id:'R'+Date.now(), workerId:w.id, typeId:tid, qty: tid==='gloves'?5:(tid==='earplug'?10:1), issueDate:this.fmtDate(this.TODAY), outNo };
+    const time=this.nowStamp();
+    const log={ time, type:'자동', count:1, detail:w.dept+' '+w.name+' '+t.name+' 출고 반영', status:'성공' };
+    this.setState({ records:[rec,...s.records], syncLog:[log,...s.syncLog], lastSync:time, shipSeq:seq, flashId:rec.id });
+    this.showToast('출고 연동 완료 — '+w.name+' / '+t.name+' 지급 이력이 자동 추가되었습니다.');
+    clearTimeout(this._ft); this._ft=setTimeout(()=>this.setState({flashId:null}),2600);
+  }
+
+  renderVals(){
+    const s=this.state;
+    const all=s.records.map(r=>this.derive(r)).sort((a,b)=> a.issueDate<b.issueDate?1:(a.issueDate>b.issueDate?-1:0));
+    const curMap={}; s.records.forEach(r=>{ const k=r.workerId+'|'+r.typeId; if(!curMap[k] || r.issueDate>curMap[k].issueDate) curMap[k]=r; });
+    const current=Object.keys(curMap).map(k=>this.derive(curMap[k]));
+    const curByKey={}; current.forEach(r=>{ curByKey[r.workerId+'|'+r.typeId]=r; });
+    const imminent=current.filter(r=>r.status==='imminent');
+    const expired=current.filter(r=>r.status==='expired');
+    const thisMonth=s.records.filter(r=> r.issueDate>='2026-06-01' && r.issueDate<='2026-06-30');
+    const required=['helmet','shoes','goggle']; const notRec=[];
+    s.workers.forEach(w=>{ required.forEach(tid=>{ if(!s.records.some(r=>r.workerId===w.id&&r.typeId===tid)) notRec.push({worker:w,tid}); }); });
+
+    const menuDef=[['dashboard','대시보드','▤'],['personal','개인별 지급대장','☰'],['dept','부서별 지급대장','▦'],['alarm','사용기한/알람 관리','◷'],['master','보호구 기준정보','◈'],['settings','설정','⚙']];
+    const menu=menuDef.map(m=>{ const active=s.screen===m[0]; return { id:m[0], label:m[1], icon:m[2], go:()=>this.nav(m[0]), color:active?'#F5821F':'#aeb6c0', bg:active?'rgba(245,130,31,.12)':'transparent', bar:active?'#F5821F':'transparent', weight:active?'700':'500' }; });
+    const titles={dashboard:'대시보드',personal:'개인별 지급대장',dept:'부서별 지급대장',alarm:'사용기한 / 알람 관리',master:'보호구 기준정보',settings:'설정'};
+
+    const summary=[
+      {label:'만료 임박', value:imminent.length, sub:'알람 기준일 이내', accent:'#F5821F', numColor:'#F5821F'},
+      {label:'만료 경과', value:expired.length, sub:'즉시 교체 필요', accent:'#d63b30', numColor:'#d63b30'},
+      {label:'미수령', value:notRec.length, sub:'필수 보호구 미지급', accent:'#8a93a0', numColor:'#3b424a'},
+      {label:'이번 달 지급', value:thisMonth.length, sub:'2026년 6월 누적', accent:'#3b8f5a', numColor:'#2f7d4d'},
+    ];
+
+    const statusDefs=[{key:'imminent',label:'임박',color:'#F5821F'},{key:'expired',label:'경과',color:'#d63b30'},{key:'normal',label:'정상',color:'#aab2bb'}];
+    const deptGrid=statusDefs.map(sd=>({ label:sd.label, color:sd.color,
+      cells:s.depts.map(dp=>{ const c=current.filter(r=>r.dept===dp&&r.status===sd.key).length; const hot=sd.key!=='normal'&&c>0; return {dept:dp, count:c, color:hot?sd.color:'#9aa3ac', weight:hot?'800':'500'}; }),
+      total:current.filter(r=>r.status===sd.key).length }));
+
+    const recentList=all.slice(0,9).map(r=>{ const isNew=r.id===s.flashId; return Object.assign({}, r, {isNew, rowBg:isNew?'#fff8ef':'#fff'}); });
+    const todayAlarms=current.filter(r=>r.status==='imminent'||r.status==='expired').sort((a,b)=>a.daysLeft-b.daysLeft).slice(0,10);
+
+    // personal
+    const q=s.searchPersonal.trim();
+    const factoryOptions=[...new Set(s.workers.map(w=>w.factory))];
+    const deptOptions=[...new Set(s.workers.filter(w=> s.selFactory==='all'||w.factory===s.selFactory).map(w=>w.dept))];
+    const subOrgOptions=[...new Set(s.workers.filter(w=> (s.selFactory==='all'||w.factory===s.selFactory) && (s.selDept==='all'||w.dept===s.selDept)).map(w=>w.subOrg))];
+    const workerList=s.workers.filter(w=>
+        (s.selFactory==='all'||w.factory===s.selFactory) &&
+        (s.selDept==='all'||w.dept===s.selDept) &&
+        (s.selSubOrg==='all'||w.subOrg===s.selSubOrg) &&
+        (!q || w.name.indexOf(q)>=0 || w.id.toLowerCase().indexOf(q.toLowerCase())>=0)
+      ).map(w=>{ const active=w.id===s.selectedWorkerId; return Object.assign({}, w, { empNo:w.id, onClick:()=>this.selectWorker(w.id), bg:active?'#fff6ee':'#fff', bar:active?'#F5821F':'transparent', nameColor:active?'#F5821F':'#2b3138' }); });
+    const selW=this.workerById(s.selectedWorkerId);
+    const sel={ name:selW.name, empNo:selW.id, dept:selW.dept, factory:selW.factory, subOrg:selW.subOrg, initial:selW.name.charAt(0) };
+    const _wcur={}; s.records.filter(r=>r.workerId===s.selectedWorkerId).forEach(r=>{ const k=r.typeId; if(!_wcur[k]||r.issueDate>_wcur[k].issueDate) _wcur[k]=r; });
+    const personalRecords=s.ppeTypes.map(t=>_wcur[t.id]).filter(Boolean).map(r=>this.derive(r));
+    const selImminent=personalRecords.filter(r=>r.status==='imminent').length;
+    const selExpired=personalRecords.filter(r=>r.status==='expired').length;
+
+    // dept matrix
+    const deptTabs=s.depts.map(dp=>{ const active=dp===s.deptTab; return { name:dp, onClick:()=>this.setDeptTab(dp), color:active?'#F5821F':'#7a8591', bar:active?'#F5821F':'transparent', weight:active?'700':'500' }; });
+    const inDept=s.workers.filter(w=>w.dept===s.deptTab);
+    const deptMatrix=inDept.map(w=>({ worker:w, cells:s.ppeTypes.map(t=>{ const r=curByKey[w.id+'|'+t.id]; return r? {has:true, empty:false, issueStr:r.issueStr, dot:r.dot, label:r.label, color:r.color} : {has:false, empty:true}; }) }));
+
+    // alarm screen
+    let alarmRows=current.filter(r=>r.status==='imminent'||r.status==='expired');
+    if(s.alarmStatus!=='all') alarmRows=alarmRows.filter(r=>r.status===s.alarmStatus);
+    if(s.alarmDept!=='all') alarmRows=alarmRows.filter(r=>r.dept===s.alarmDept);
+    alarmRows=alarmRows.sort((a,b)=>a.daysLeft-b.daysLeft);
+
+    const masterRows=s.ppeTypes.map(t=>Object.assign({}, t, { onName:e=>this.updType(t.id,'name',e.target.value), onMonths:e=>this.updType(t.id,'months',e.target.value), onAlarm:e=>this.updType(t.id,'alarmDays',e.target.value), onNote:e=>this.updType(t.id,'note',e.target.value), remove:()=>this.removeType(t.id) }));
+
+    return {
+      sidebarWidth: s.collapsed?'62px':'232px', expanded:!s.collapsed,
+      menu, pageTitle:titles[s.screen], userName:'정우성', userDept:'기계정비1팀',
+      lastSync:s.lastSync, bellCount:imminent.length+expired.length, toast:s.toast,
+      onToggleCollapse:()=>this.toggleCollapse(),
+      depts:s.depts, ppeTypes:s.ppeTypes,
+      scrDashboard:s.screen==='dashboard', scrPersonal:s.screen==='personal', scrDept:s.screen==='dept', scrAlarm:s.screen==='alarm', scrMaster:s.screen==='master', scrSettings:s.screen==='settings',
+      summary, deptGrid, recentList, todayAlarms,
+      workerList, sel, selCount:personalRecords.length, personalRecords, selImminent, selExpired,
+      factoryOptions, deptOptions, subOrgOptions, selFactory:s.selFactory, selDept:s.selDept, selSubOrg:s.selSubOrg,
+      onSelFactory:e=>this.setState({selFactory:e.target.value, selDept:'all', selSubOrg:'all'}),
+      onSelDept:e=>this.setState({selDept:e.target.value, selSubOrg:'all'}),
+      onSelSubOrg:e=>this.setState({selSubOrg:e.target.value}),
+      searchPersonal:s.searchPersonal, onSearch:e=>this.setState({searchPersonal:e.target.value}),
+      deptTabs, deptTab:s.deptTab, deptMatrix, onExport:()=>this.exportExcel(),
+      alarmRows, alarmCount:alarmRows.length, alarmStatus:s.alarmStatus, alarmDept:s.alarmDept,
+      onAlarmStatus:e=>this.setState({alarmStatus:e.target.value}), onAlarmDept:e=>this.setState({alarmDept:e.target.value}),
+      alarmHistory:s.alarmHistory,
+      pre1:s.pre1, pre2:s.pre2, onPre1:e=>this.setState({pre1:parseInt(e.target.value,10)||0}), onPre2:e=>this.setState({pre2:parseInt(e.target.value,10)||0}),
+      chEmail:s.chEmail, chSms:s.chSms, chApp:s.chApp,
+      onChEmail:e=>this.setState({chEmail:e.target.checked}), onChSms:e=>this.setState({chSms:e.target.checked}), onChApp:e=>this.setState({chApp:e.target.checked}),
+      onSaveSettings:()=>this.saveSettings(),
+      masterRows, onAddType:()=>this.addType(),
+      syncLog:s.syncLog, onSync:()=>this.addShipment(),
+    };
+  }
+}
+</script>
+</body>
+</html>
