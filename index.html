@@ -1958,26 +1958,48 @@ async function commitBulkRecords() {
 function downloadBulkRecordsTemplate() {
   if (typeof XLSX==='undefined') { showToast('SheetJS 라이브러리 로드 대기 중입니다.'); return; }
   const ppeNames = state.ppeTypes.map(t=>t.name);
-  const ws = XLSX.utils.aoa_to_sheet([
+
+  // ── Sheet 1: 지급내역 입력 양식 ──────────────────────────────────────────
+  const ws1 = XLSX.utils.aoa_to_sheet([
     ['사번','보호구종류','지급일','수량','출고번호'],
     ['199911098', ppeNames[0]||'안전모', '2025-01-15','1','OUT-20250115-001'],
     ['201103559', ppeNames[1]||'안전화', '2025-01-15','1','OUT-20250115-002'],
     ['199141576', ppeNames[0]||'안전모', '2025-02-10','1','OUT-20250210-001'],
   ]);
-  ws['!cols']=[{wch:14},{wch:20},{wch:14},{wch:6},{wch:22}];
-  // add validation note in row after sample
-  XLSX.utils.sheet_add_aoa(ws,[
+  ws1['!cols']=[{wch:14},{wch:20},{wch:14},{wch:6},{wch:22}];
+  XLSX.utils.sheet_add_aoa(ws1,[
     [''],
     ['※ 안내'],
-    ['• 사번: workers 컬렉션의 employeeId와 정확히 일치해야 매칭됩니다.'],
-    ['• 보호구종류: ppeTypes 컬렉션의 name과 정확히 일치해야 매칭됩니다.'],
+    ['• 사번: 아래 "전체 작업자 목록" 시트의 사번을 복사해서 사용하세요.'],
+    ['• 보호구종류: '+ppeNames.join(' / ')],
     ['• 지급일 형식: YYYY-MM-DD (예: 2025-01-15)'],
     ['• 출고번호가 없으면 자동 생성됩니다.'],
-    ['• 등록 가능한 보호구 목록: '+ppeNames.join(', ')],
   ],{origin:{r:5,c:0}});
-  const wb=XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb,ws,'지급내역업로드');
-  XLSX.writeFile(wb,'PPE지급내역_일괄업로드양식.xlsx');
+
+  // ── Sheet 2: 전체 작업자 목록 ─────────────────────────────────────────────
+  const workerRows = [['사번','성명','공장','부서','하위조직']];
+  // sort by factory → dept → subOrg → name
+  const sorted = [...state.workers].sort((a,b)=>{
+    const fa=a.factory||'', fb=b.factory||'';
+    if (fa!==fb) return fa<fb?-1:1;
+    const da=a.dept||'', db=b.dept||'';
+    if (da!==db) return da<db?-1:1;
+    const sa=a.subOrg||'', sb=b.subOrg||'';
+    if (sa!==sb) return sa<sb?-1:1;
+    return (a.name||'')<(b.name||'')?-1:1;
+  });
+  sorted.forEach(w => workerRows.push([
+    w.employeeId||w.id||'', w.name||'', w.factory||'', w.dept||'', w.subOrg||''
+  ]));
+  const ws2 = XLSX.utils.aoa_to_sheet(workerRows);
+  ws2['!cols']=[{wch:14},{wch:10},{wch:12},{wch:16},{wch:16}];
+
+  // ── 워크북 조립 ──────────────────────────────────────────────────────────
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws1, '지급내역업로드');
+  XLSX.utils.book_append_sheet(wb, ws2, '전체 작업자 목록');
+  XLSX.writeFile(wb, 'PPE지급내역_일괄업로드양식.xlsx');
+  showToast(`양식 다운로드 완료 — 작업자 ${sorted.length}명 포함`);
 }
 
 // ─── Firestore write: bulk import PPE types ──────────────────────────────────
