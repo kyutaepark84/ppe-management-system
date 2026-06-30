@@ -742,6 +742,9 @@ const state = {
   selFactory: 'all', selDept: 'all', selSubOrg: 'all',
   // 부서별 지급대장 필터 (독립 상태)
   deptSelFactory: 'all', deptSelDept: 'all', deptSelSubOrg: 'all',
+  // 지급내역 일괄 업로드 미리보기
+  bulkPreview: null,  // null | { rows:[{rowNum,empId,name,typeName,issueDate,qty,outNo,workerId,typeId,status,reason}], matched, skipped, fileName }
+
   alarmStatus: 'all', alarmDept: 'all',
   flashId: null,
   // Excel 업로드 fallback (개인별 지급대장)
@@ -1530,6 +1533,55 @@ function renderSettings() {
     </div>
   </div>
   <div class="card">
+    <div class="card-hd">
+      <div class="card-hd-left"><span class="sec-marker">▶</span><span class="sec-title">지급내역 일괄 업로드</span></div>
+      <span class="card-meta">다수 인원 보호구 지급 이력 → Firestore records 컬렉션 일괄 등록</span>
+    </div>
+    <div style="padding:14px 16px;display:flex;flex-direction:column;gap:12px;">
+      <div style="font-size:12.5px;color:#5b6671;line-height:1.65;">
+        여러 작업자의 보호구 지급 내역을 Excel 한 장으로 업로드하면 Firestore <b>records</b> 컬렉션에 일괄 등록됩니다.<br>
+        <b>필수 컬럼:</b> 사번 · 보호구종류 · 지급일(YYYY-MM-DD)&nbsp;&nbsp;|&nbsp;&nbsp;<b>선택 컬럼:</b> 수량 · 출고번호
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <label style="cursor:pointer;">
+          <input type="file" id="bulk-records-upload" accept=".xlsx,.xls,.csv" style="display:none;">
+          <span class="btn-orange" style="padding:7px 16px;font-size:12.5px;display:inline-block;">⬆ Excel 파일 선택</span>
+        </label>
+        <button id="btn-bulk-records-template" class="btn-green" style="padding:7px 14px;font-size:12px;">⬇ 업로드 양식 다운로드</button>
+        ${state.bulkPreview ? `<span style="font-size:12px;color:#5b6671;">파일: <b>${esc(state.bulkPreview.fileName)}</b> · 총 ${state.bulkPreview.rows.length}행 · <span style="color:#2f9e5b;font-weight:700;">매칭 ${state.bulkPreview.matched}건</span> · <span style="color:#d63b30;">스킵 ${state.bulkPreview.skipped}건</span></span>` : ''}
+      </div>
+      ${state.bulkPreview ? `
+      <div style="overflow-x:auto;max-height:300px;overflow-y:auto;border:1px solid #e6e8eb;border-radius:4px;">
+        <table class="tbl" style="font-size:12px;">
+          <thead><tr>
+            <th class="tc" style="width:40px;">행</th>
+            <th>사번</th><th>성명</th><th>보호구 종류</th><th>지급일</th>
+            <th class="tc">수량</th><th>출고번호</th><th style="width:90px;">상태</th>
+          </tr></thead>
+          <tbody>
+            ${state.bulkPreview.rows.map(r=>`<tr style="${r.status!=='매칭됨'?'background:#fdf5f5;':''}">
+              <td class="tc" style="color:#9aa3ac;">${r.rowNum}</td>
+              <td>${esc(r.empId)}</td>
+              <td style="font-weight:600;">${esc(r.name||'?')}</td>
+              <td>${esc(r.typeName)}</td>
+              <td>${esc(r.issueDate)}</td>
+              <td class="tc">${esc(r.qty)}</td>
+              <td style="font-size:11px;color:#9aa3ac;">${esc(r.outNo)}</td>
+              <td class="tc"><span class="badge" style="color:${r.status==='매칭됨'?'#1f7a45':'#d63b30'};background:${r.status==='매칭됨'?'#e6f4ea':'#fdecea'};" title="${esc(r.reason||'')}">${esc(r.status)}</span></td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;justify-content:flex-end;">
+        <button id="btn-bulk-records-cancel" style="padding:8px 16px;background:#fff;border:1px solid #d1d5db;border-radius:4px;font-size:12.5px;color:#5b6671;cursor:pointer;">취소</button>
+        <button id="btn-bulk-records-commit" class="btn-orange" style="padding:8px 18px;font-size:13px;" ${state.bulkPreview.matched===0?'disabled':''}>
+          ▶ Firestore에 ${state.bulkPreview.matched}건 등록
+        </button>
+      </div>
+      <div id="bulk-records-progress" style="display:none;font-size:12px;font-weight:600;color:#F5821F;"></div>` : ''}
+    </div>
+  </div>
+  <div class="card">
     <div class="card-hd"><div class="card-hd-left"><span class="sec-marker">▶</span><span class="sec-title">연동 로그</span></div></div>
     ${state.syncLog.length === 0
       ? emptyState('📝', '연동 로그가 없습니다.')
@@ -1675,6 +1727,12 @@ function bindSettingsEvents() {
   document.getElementById('btn-simulate')?.addEventListener('click', addShipment);
   document.getElementById('btn-import-ppe')?.addEventListener('click', importPpeTypes);
   document.getElementById('btn-import-workers')?.addEventListener('click', importWorkers);
+  document.getElementById('bulk-records-upload')?.addEventListener('change', parseBulkRecordsFile);
+  document.getElementById('btn-bulk-records-template')?.addEventListener('click', downloadBulkRecordsTemplate);
+  document.getElementById('btn-bulk-records-cancel')?.addEventListener('click', () => {
+    state.bulkPreview = null; renderScreen();
+  });
+  document.getElementById('btn-bulk-records-commit')?.addEventListener('click', commitBulkRecords);
 }
 
 // ─── Excel upload (fallback, local-only) ─────────────────────────────────────
@@ -1767,6 +1825,159 @@ function downloadXlsTemplate() {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, '지급대장');
   XLSX.writeFile(wb, 'PPE지급대장_업로드양식.xlsx');
+}
+
+// ─── Bulk records upload ──────────────────────────────────────────────────────
+function parseBulkRecordsFile(ev) {
+  const file = ev.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb   = XLSX.read(e.target.result, { type:'binary', cellDates:true });
+      const ws   = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header:1, defval:'' });
+      if (rows.length < 2) { showToast('데이터 행이 없습니다.'); return; }
+
+      // find header row
+      let hdrIdx = 0;
+      for (let i = 0; i < Math.min(5, rows.length); i++) {
+        if (rows[i].some(c => /사번|사원/.test(String(c)))) { hdrIdx = i; break; }
+      }
+      const hdr = rows[hdrIdx].map(c => String(c).trim());
+      const cidx = kw => hdr.findIndex(h => kw.some(k => h.includes(k)));
+      const ci = {
+        empId:    cidx(['사번','사원번호','EMP']),
+        typeName: cidx(['보호구','PPE','종류']),
+        issueDate:cidx(['지급일','지급날짜','issue']),
+        qty:      cidx(['수량','qty','개수']),
+        outNo:    cidx(['출고번호','출고No','outNo']),
+      };
+
+      // build lookup maps
+      const workerByEmpId = {};
+      state.workers.forEach(w => { if (w.employeeId) workerByEmpId[w.employeeId.trim()] = w; });
+      const ppeByName = {};
+      state.ppeTypes.forEach(t => { ppeByName[t.name.trim()] = t; });
+
+      const preview = [];
+      for (let i = hdrIdx+1; i < rows.length; i++) {
+        const r = rows[i];
+        const empId    = String(r[ci.empId]    ??'').trim();
+        const typeName = String(r[ci.typeName] ??'').trim();
+        const rawDate  = ci.issueDate>=0 ? r[ci.issueDate] : '';
+        const issueDate = rawDate instanceof Date ? fmtDate(rawDate) : String(rawDate||'').trim();
+        const qty      = ci.qty>=0  ? (Number(r[ci.qty])||1)   : 1;
+        const outNo    = ci.outNo>=0? String(r[ci.outNo]||'').trim() : '';
+        if (!empId && !typeName) continue;
+
+        const worker = workerByEmpId[empId];
+        const ppeType = ppeByName[typeName] ||
+          Object.values(ppeByName).find(t => t.name.includes(typeName)||typeName.includes(t.name));
+        let status='매칭됨', reason='';
+        if (!empId)                     { status='스킵'; reason='사번 없음'; }
+        else if (!typeName)             { status='스킵'; reason='보호구명 없음'; }
+        else if (!issueDate)            { status='스킵'; reason='지급일 없음'; }
+        else if (!worker)               { status='작업자 없음'; reason='사번 '+empId+' 미등록'; }
+        else if (!ppeType)              { status='보호구 없음'; reason='"'+typeName+'" 기준정보 없음'; }
+
+        preview.push({
+          rowNum: i-hdrIdx, empId, name: worker?.name||'', typeName, issueDate, qty, outNo,
+          workerId: worker?.id||null, typeId: ppeType?.id||null,
+          status, reason,
+        });
+      }
+      const matched = preview.filter(r=>r.status==='매칭됨').length;
+      const skipped = preview.length - matched;
+      state.bulkPreview = { rows:preview, matched, skipped, fileName:file.name };
+      renderScreen();
+      showToast(`파일 분석 완료 — 매칭 ${matched}건 / 스킵 ${skipped}건`);
+    } catch(err) {
+      showToast('파싱 오류: '+err.message);
+    }
+    ev.target.value='';
+  };
+  reader.readAsBinaryString(file);
+}
+
+async function commitBulkRecords() {
+  if (!state.bulkPreview) return;
+  const btn  = document.getElementById('btn-bulk-records-commit');
+  const prog = document.getElementById('bulk-records-progress');
+  if (!btn||!prog) return;
+  const toWrite = state.bulkPreview.rows.filter(r=>r.status==='매칭됨');
+  if (toWrite.length===0) { showToast('등록할 항목이 없습니다.'); return; }
+
+  btn.disabled = true;
+  prog.style.display = 'block';
+  prog.style.color = '#F5821F';
+  prog.textContent = `Firestore에 ${toWrite.length}건 등록 중...`;
+
+  try {
+    const BATCH = 400;
+    let written=0, batchInst=writeBatch(db), opCount=0;
+    const isoNow = new Date().toISOString();
+    for (const r of toWrite) {
+      batchInst.set(doc(collection(db,'records')), {
+        workerId:   r.workerId,
+        typeId:     r.typeId,
+        qty:        r.qty,
+        issueDate:  r.issueDate,
+        outNo:      r.outNo || ('BULK-'+r.issueDate+'-'+String(++written).padStart(3,'0')),
+        createdAt:  isoNow,
+      });
+      opCount++; written++;
+      if (opCount===BATCH) {
+        await batchInst.commit();
+        batchInst=writeBatch(db); opCount=0;
+        prog.textContent=`등록 중... ${written}/${toWrite.length}건`;
+      }
+    }
+    if (opCount>0) await batchInst.commit();
+
+    // write sync log
+    await addDoc(collection(db,'syncLog'),{
+      time: fmtNow(), type:'일괄 지급등록', count:String(toWrite.length),
+      detail: state.bulkPreview.fileName+' 업로드 ('+toWrite.length+'건)',
+      status:'성공', createdAt:isoNow,
+    });
+
+    prog.textContent=`✔ 완료: ${toWrite.length}건 Firestore 등록 완료`;
+    prog.style.color='#2f9e5b';
+    showToast(`지급내역 ${toWrite.length}건을 Firestore에 등록했습니다.`);
+    state.bulkPreview=null;
+    setTimeout(()=>renderScreen(), 1200);
+  } catch(err) {
+    prog.textContent='오류: '+err.message;
+    prog.style.color='#d63b30';
+    showToast('등록 실패: '+err.message);
+    btn.disabled=false;
+  }
+}
+
+function downloadBulkRecordsTemplate() {
+  if (typeof XLSX==='undefined') { showToast('SheetJS 라이브러리 로드 대기 중입니다.'); return; }
+  const ppeNames = state.ppeTypes.map(t=>t.name);
+  const ws = XLSX.utils.aoa_to_sheet([
+    ['사번','보호구종류','지급일','수량','출고번호'],
+    ['199911098', ppeNames[0]||'안전모', '2025-01-15','1','OUT-20250115-001'],
+    ['201103559', ppeNames[1]||'안전화', '2025-01-15','1','OUT-20250115-002'],
+    ['199141576', ppeNames[0]||'안전모', '2025-02-10','1','OUT-20250210-001'],
+  ]);
+  ws['!cols']=[{wch:14},{wch:20},{wch:14},{wch:6},{wch:22}];
+  // add validation note in row after sample
+  XLSX.utils.sheet_add_aoa(ws,[
+    [''],
+    ['※ 안내'],
+    ['• 사번: workers 컬렉션의 employeeId와 정확히 일치해야 매칭됩니다.'],
+    ['• 보호구종류: ppeTypes 컬렉션의 name과 정확히 일치해야 매칭됩니다.'],
+    ['• 지급일 형식: YYYY-MM-DD (예: 2025-01-15)'],
+    ['• 출고번호가 없으면 자동 생성됩니다.'],
+    ['• 등록 가능한 보호구 목록: '+ppeNames.join(', ')],
+  ],{origin:{r:5,c:0}});
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'지급내역업로드');
+  XLSX.writeFile(wb,'PPE지급내역_일괄업로드양식.xlsx');
 }
 
 // ─── Firestore write: bulk import PPE types ──────────────────────────────────
