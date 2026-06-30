@@ -1816,15 +1816,47 @@ function handleXlsUpload(ev) {
 
 function downloadXlsTemplate() {
   if (typeof XLSX === 'undefined') { showToast('SheetJS 라이브러리가 로드되지 않았습니다.'); return; }
-  const ws = XLSX.utils.aoa_to_sheet([
-    ['사번','성명','공장','부서','하위조직','보호구종류','지급일','수량','만료예정일','출고번호'],
+  const HDR = ['사번','성명','공장','부서','하위조직','보호구종류','지급일','수량','만료예정일','출고번호'];
+  const COLS = [14,10,10,16,14,18,12,6,14,20].map(w=>({wch:w}));
+
+  // ── Sheet 1: 지급대장 (예시 행 2개) ────────────────────────────────────────
+  const ws1 = XLSX.utils.aoa_to_sheet([
+    HDR,
     ['199911098','홍길동','PVC공장','PVC생산1팀','사무실','안전모','2024-01-15','1','2026-01-15','OUT-20240115-001'],
     ['199911098','홍길동','PVC공장','PVC생산1팀','사무실','안전화','2024-01-15','1','','OUT-20240115-002'],
   ]);
-  ws['!cols'] = [10,10,10,14,12,16,12,6,14,18].map(w=>({wch:w}));
+  ws1['!cols'] = COLS;
+
+  // ── Sheet 2: 예시 템플릿 — 전체 작업자 사번/성명/공장/부서/하위조직 미리 채움 ──
+  // Firestore 작업자 우선, 없으면 내장 WORKER_SEED_DATA 479명 사용
+  let workerSource = state.workers && state.workers.length > 0
+    ? state.workers
+    : WORKER_SEED_DATA.map(w => ({ employeeId:w.e, name:w.n, factory:w.f, dept:w.d, subOrg:w.s }));
+
+  const sorted = [...workerSource].sort((a,b)=>{
+    const fa=a.factory||'', fb=b.factory||'';
+    if (fa!==fb) return fa<fb?-1:1;
+    const da=a.dept||'', db=b.dept||'';
+    if (da!==db) return da<db?-1:1;
+    const sa=a.subOrg||'', sb=b.subOrg||'';
+    if (sa!==sb) return sa<sb?-1:1;
+    return (a.name||'').localeCompare(b.name||'', 'ko');
+  });
+
+  const tmplRows = [HDR];
+  sorted.forEach(w => tmplRows.push([
+    String(w.employeeId||w.id||''), w.name||'', w.factory||'', w.dept||'', w.subOrg||'',
+    '', '', '', '', ''   // 보호구종류~출고번호: 사용자가 직접 입력
+  ]));
+  const ws2 = XLSX.utils.aoa_to_sheet(tmplRows);
+  ws2['!cols'] = COLS;
+
+  // ── 워크북 조립 ─────────────────────────────────────────────────────────────
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, '지급대장');
+  XLSX.utils.book_append_sheet(wb, ws1, '지급대장');
+  XLSX.utils.book_append_sheet(wb, ws2, '예시 템플릿');
   XLSX.writeFile(wb, 'PPE지급대장_업로드양식.xlsx');
+  showToast(`양식 다운로드 완료 — 예시 템플릿에 작업자 ${sorted.length}명 포함`);
 }
 
 // ─── Bulk records upload ──────────────────────────────────────────────────────
