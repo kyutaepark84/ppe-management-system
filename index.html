@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'Noto Sans KR','Malgun Gothic','맑은 고딕',system-ui,sans-serif;background:#eef0f2;color:#333;font-size:13px;}
@@ -739,8 +740,14 @@ const state = {
   collapsed: false,
   searchPersonal: '',
   selFactory: 'all', selDept: 'all', selSubOrg: 'all',
+  // 부서별 지급대장 필터 (독립 상태)
+  deptSelFactory: 'all', deptSelDept: 'all', deptSelSubOrg: 'all',
   alarmStatus: 'all', alarmDept: 'all',
   flashId: null,
+  // Excel 업로드 fallback (개인별 지급대장)
+  xlsRecords: [],   // [{workerId, typeId(name), typeName, issueDate, qty, expiryDate, outNo}]
+  xlsWorkers: [],   // [{id, name, dept, factory, subOrg}] from excel
+  xlsFileName: '',
 };
 
 // ─── loading tracking ─────────────────────────────────────────────────────────
@@ -833,6 +840,27 @@ function showErr(msg) {
 // ─── computed helpers ─────────────────────────────────────────────────────────
 function getDepts() {
   return [...new Set(state.workers.map(w => w.dept))].sort();
+}
+
+// derive for Excel-sourced rows (no Firestore typeId linkage)
+function deriveXls(r) {
+  const TODAY = today();
+  const t = state.ppeTypes.find(x => x.name === r.typeName);
+  const isPerf = t ? (t.lifeType === '성능소진형' || t.months === 0) : false;
+  const issue = new Date(r.issueDate);
+  if (isPerf || !r.expiryDate) {
+    return { ...r, issueStr:fmtDate(issue), expiryStr: r.expiryDate || '성능소진시',
+      daysLeft:null, dLeftText:'성능소진시', status:'normal', label:'정상', color:'#6b7785', bg:'#f1f3f5', dot:'#aab2bb' };
+  }
+  const expiry = new Date(r.expiryDate);
+  const daysLeft = Math.floor((expiry - TODAY) / 86400000);
+  const alarmDays = t ? t.alarmDays : 14;
+  let status, label, color, bg, dot;
+  if (daysLeft < 0)              { status='expired';  label='경과'; color='#d63b30'; bg='#fdecea'; dot='#d63b30'; }
+  else if (daysLeft<=alarmDays)  { status='imminent'; label='임박'; color='#cf7012'; bg='#fff3e3'; dot='#F5821F'; }
+  else                           { status='normal';   label='정상'; color='#6b7785'; bg='#f1f3f5'; dot='#aab2bb'; }
+  const dLeftText = daysLeft < 0 ? Math.abs(daysLeft)+'일 경과' : daysLeft+'일 남음';
+  return { ...r, issueStr:fmtDate(issue), expiryStr:fmtDate(expiry), daysLeft, dLeftText, status, label, color, bg, dot };
 }
 
 function derive(r) {
@@ -1052,21 +1080,35 @@ function renderDashboard() {
 // ─── PERSONAL LEDGER ──────────────────────────────────────────────────────────
 function renderPersonal() {
   const q = state.searchPersonal.trim();
-  const factoryOptions = [...new Set(state.workers.map(w => w.factory))].sort();
-  const deptOptions    = [...new Set(state.workers
+  // Merge Firestore + Excel workers (Excel overrides when xlsWorkers is populated)
+  const workerPool = state.xlsWorkers.length > 0
+    ? [...state.workers, ...state.xlsWorkers.filter(xw => !state.workers.find(w => w.id===xw.id))]
+    : state.workers;
+  const factoryOptions = [...new Set(workerPool.map(w => w.factory).filter(Boolean))].sort();
+  const deptOptions    = [...new Set(workerPool
     .filter(w => state.selFactory==='all'||w.factory===state.selFactory).map(w => w.dept))].sort();
-  const subOrgOptions  = [...new Set(state.workers
+  const subOrgOptions  = [...new Set(workerPool
     .filter(w => (state.selFactory==='all'||w.factory===state.selFactory) &&
-                 (state.selDept==='all'||w.dept===state.selDept)).map(w => w.subOrg))].sort();
-  const filteredWorkers = state.workers.filter(w =>
+                 (state.selDept==='all'||w.dept===state.selDept)).map(w => w.subOrg).filter(Boolean))].sort();
+  const filteredWorkers = workerPool.filter(w =>
     (state.selFactory==='all'||w.factory===state.selFactory) &&
     (state.selDept==='all'||w.dept===state.selDept) &&
     (state.selSubOrg==='all'||w.subOrg===state.selSubOrg) &&
-    (!q || w.name.includes(q) || w.id.toLowerCase().includes(q.toLowerCase()))
+    (!q || w.name.includes(q) || (w.id||'').toLowerCase().includes(q.toLowerCase()) ||
+           (w.employeeId||'').includes(q))
   );
-  const selW = (state.selectedWorkerId && state.workers.find(w => w.id===state.selectedWorkerId)) ||
+  const selW = (state.selectedWorkerId && workerPool.find(w => w.id===state.selectedWorkerId)) ||
                filteredWorkers[0] || null;
   const personalRecords = selW ? (() => {
+    if (state.xlsRecords.length > 0) {
+      // Excel mode: use xlsRecords for this worker
+      const wid = selW.id || selW.employeeId;
+      const rows = state.xlsRecords.filter(r => r.workerId === wid);
+      // deduplicate by typeName, keep latest issueDate
+      const cur = {};
+      rows.forEach(r => { if (!cur[r.typeName]||r.issueDate>cur[r.typeName].issueDate) cur[r.typeName]=r; });
+      return Object.values(cur).map(r => deriveXls(r));
+    }
     const wcur = {};
     state.records.filter(r => r.workerId===selW.id)
       .forEach(r => { if (!wcur[r.typeId]||r.issueDate>wcur[r.typeId].issueDate) wcur[r.typeId]=r; });
@@ -1116,13 +1158,28 @@ function renderPersonal() {
     </div>
   </div>
   <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid #eef0f2;background:#fafbfc;gap:8px;flex-wrap:wrap;">
+      <div style="font-size:12.5px;font-weight:700;color:#2b3138;">지급 이력</div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        ${state.xlsFileName ? `<span style="font-size:11.5px;color:#1a6faa;background:#e6f2fb;padding:3px 9px;border-radius:10px;">📄 ${esc(state.xlsFileName)}</span>
+        <button class="btn-green" id="btn-xls-clear" style="padding:4px 10px;font-size:11px;">✕ 초기화</button>` : ''}
+        <label style="cursor:pointer;">
+          <input type="file" id="xls-upload" accept=".xlsx,.xls,.csv" style="display:none;">
+          <span class="btn-orange" style="padding:6px 12px;font-size:12px;display:inline-block;">⬆ Excel 업로드</span>
+        </label>
+        <a href="#" id="btn-xls-template" style="font-size:11px;color:#9aa3ac;text-decoration:underline;">양식 다운로드</a>
+      </div>
+    </div>
+    ${state.xlsFileName ? `<div style="padding:6px 14px;background:#e6f2fb;border-bottom:1px solid #b8d9f5;font-size:11.5px;color:#1a5a8a;">
+      ⚠ Excel 데이터 표시 중 — Firestore 연결 복구 후 <b>초기화</b>를 클릭하면 실시간 데이터로 전환됩니다.
+    </div>` : ''}
     ${selW ? `
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #eef0f2;background:#fafbfc;">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #eef0f2;">
       <div style="display:flex;align-items:center;gap:16px;">
         <span style="width:42px;height:42px;border-radius:50%;background:#3a4250;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;">${esc(selW.name.charAt(0))}</span>
         <div>
-          <div style="font-size:17px;font-weight:800;color:#2b3138;">${esc(selW.name)} <span style="font-size:12px;font-weight:500;color:#9aa3ac;margin-left:4px;">${esc(selW.id)}</span></div>
-          <div style="font-size:12px;color:#7a8591;margin-top:2px;">${esc(selW.factory)} · ${esc(selW.dept)} · ${esc(selW.subOrg)} · 보호구 ${personalRecords.length}종</div>
+          <div style="font-size:17px;font-weight:800;color:#2b3138;">${esc(selW.name)} <span style="font-size:12px;font-weight:500;color:#9aa3ac;margin-left:4px;">${esc(selW.id||selW.employeeId||'')}</span></div>
+          <div style="font-size:12px;color:#7a8591;margin-top:2px;">${esc(selW.factory||'')} · ${esc(selW.dept||'')} · ${esc(selW.subOrg||'')} · 보호구 ${personalRecords.length}종</div>
         </div>
       </div>
       <div style="font-size:11px;color:#9aa3ac;text-align:right;line-height:1.5;">임박 ${selImminent}건 · 경과 ${selExpired}건<br>총 ${personalRecords.length}건 지급 이력</div>
@@ -1137,12 +1194,12 @@ function renderPersonal() {
             ? `<tr><td colspan="7" style="text-align:center;color:#9aa3ac;padding:20px;">지급 이력 없음</td></tr>`
             : personalRecords.map(r=>`<tr>
               <td style="font-weight:600;color:#2b3138;">${esc(r.typeName)}</td>
-              <td>${esc(r.issueStr)}</td>
+              <td>${esc(r.issueStr||r.issueDate||'')}</td>
               <td class="tc">${esc(r.qty)}</td>
-              <td>${esc(r.expiryStr)}</td>
-              <td style="color:${r.color};font-weight:600;font-size:11.5px;">${esc(r.dLeftText)}</td>
+              <td>${esc(r.expiryStr||r.expiryDate||'성능소진시')}</td>
+              <td style="color:${r.color};font-weight:600;font-size:11.5px;">${esc(r.dLeftText||'')}</td>
               <td><span class="badge" style="color:${r.color};background:${r.bg};">${esc(r.label)}</span></td>
-              <td style="font-size:11px;color:#9aa3ac;">${esc(r.outNo)}</td>
+              <td style="font-size:11px;color:#9aa3ac;">${esc(r.outNo||'')}</td>
             </tr>`).join('')}
         </tbody>
       </table>
@@ -1154,34 +1211,77 @@ function renderPersonal() {
 // ─── DEPT LEDGER ──────────────────────────────────────────────────────────────
 function renderDept() {
   const c = computed();
-  const depts  = getDepts();
-  const inDept = state.workers.filter(w => w.dept === state.deptTab);
+  const allWorkers = state.workers;
+  const factoryOpts = [...new Set(allWorkers.map(w => w.factory))].sort();
+  const deptOpts    = [...new Set(allWorkers
+    .filter(w => state.deptSelFactory==='all'||w.factory===state.deptSelFactory)
+    .map(w => w.dept))].sort();
+  const subOrgOpts  = [...new Set(allWorkers
+    .filter(w => (state.deptSelFactory==='all'||w.factory===state.deptSelFactory)
+              && (state.deptSelDept==='all'||w.dept===state.deptSelDept))
+    .map(w => w.subOrg).filter(Boolean))].sort();
+  const filtered = allWorkers.filter(w =>
+    (state.deptSelFactory==='all'||w.factory===state.deptSelFactory) &&
+    (state.deptSelDept==='all'||w.dept===state.deptSelDept) &&
+    (state.deptSelSubOrg==='all'||w.subOrg===state.deptSelSubOrg)
+  );
+  const filterLabel = [
+    state.deptSelFactory!=='all'?state.deptSelFactory:'',
+    state.deptSelDept!=='all'?state.deptSelDept:'',
+    state.deptSelSubOrg!=='all'?state.deptSelSubOrg:'',
+  ].filter(Boolean).join(' > ') || '전체';
   return `
-<div class="card">
-  <div class="card-hd">
-    <div class="card-hd-left"><span class="sec-marker">▶</span><span class="sec-title">부서별 보호구 지급 매트릭스</span></div>
-    <div style="display:flex;align-items:center;gap:8px;">
-      <select class="form-select"><option>기간: 전체</option><option>최근 3개월</option><option>최근 6개월</option></select>
+<div class="flex-col gap-14">
+  <div class="card">
+    <div class="card-hd">
+      <div class="card-hd-left"><span class="sec-marker">▶</span><span class="sec-title">조직 선택</span></div>
+      <span class="card-meta">선택: ${esc(filterLabel)} · ${filtered.length}명</span>
+    </div>
+    <div style="padding:12px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;border-bottom:1px solid #f0f1f3;">
+      <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:160px;">
+        <span style="font-size:11px;font-weight:600;color:#9aa3ac;white-space:nowrap;">공장</span>
+        <select class="form-select" style="flex:1;" id="dept-sel-factory">
+          <option value="all">전체</option>
+          ${factoryOpts.map(o=>`<option value="${esc(o)}"${state.deptSelFactory===o?' selected':''}>${esc(o)}</option>`).join('')}
+        </select>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:160px;">
+        <span style="font-size:11px;font-weight:600;color:#9aa3ac;white-space:nowrap;">부서</span>
+        <select class="form-select" style="flex:1;" id="dept-sel-dept">
+          <option value="all">전체</option>
+          ${deptOpts.map(o=>`<option value="${esc(o)}"${state.deptSelDept===o?' selected':''}>${esc(o)}</option>`).join('')}
+        </select>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:160px;">
+        <span style="font-size:11px;font-weight:600;color:#9aa3ac;white-space:nowrap;">하위조직</span>
+        <select class="form-select" style="flex:1;" id="dept-sel-suborg">
+          <option value="all">전체</option>
+          ${subOrgOpts.map(o=>`<option value="${esc(o)}"${state.deptSelSubOrg===o?' selected':''}>${esc(o)}</option>`).join('')}
+        </select>
+      </div>
       <button class="btn-green" id="btn-export">⬇ 엑셀 내보내기</button>
     </div>
   </div>
-  ${depts.length === 0 ? emptyState('🏭', '부서 데이터가 없습니다.') : `
-  <div class="tab-bar">
-    ${depts.map(dp=>`<div class="tab-item${dp===state.deptTab?' active':''}" data-dept-tab="${esc(dp)}">${esc(dp)}</div>`).join('')}
-  </div>
-  <div class="ov-x">
+  <div class="card">
+    <div class="card-hd">
+      <div class="card-hd-left"><span class="sec-marker">▶</span><span class="sec-title">보호구 지급 매트릭스</span></div>
+      <span class="card-meta">${esc(filterLabel)} · ${filtered.length}명 · ${state.ppeTypes.length}종</span>
+    </div>
+    ${allWorkers.length === 0
+      ? emptyState('🏭', '부서 데이터가 없습니다.<br>Firestore <b>workers</b> 컬렉션에 작업자를 추가해주세요.')
+      : filtered.length === 0
+        ? emptyState('🔍', '선택한 조건에 해당하는 작업자가 없습니다.')
+        : `<div class="ov-x">
     <table class="tbl" style="min-width:760px;">
       <thead><tr>
-        <th style="position:sticky;left:0;background:#f2f3f5;width:150px;">작업자</th>
+        <th style="position:sticky;left:0;background:#f2f3f5;width:160px;">작업자</th>
         ${state.ppeTypes.map(t=>`<th class="tc" style="border-left:1px solid #eceef0;font-size:11px;">${esc(t.name)}</th>`).join('')}
       </tr></thead>
       <tbody>
-        ${inDept.length === 0
-          ? `<tr><td colspan="${state.ppeTypes.length+1}" style="text-align:center;color:#9aa3ac;padding:20px;">해당 부서 작업자 없음</td></tr>`
-          : inDept.map(w=>`<tr>
-          <td style="position:sticky;left:0;background:#fff;">
+        ${filtered.map(w=>`<tr>
+          <td style="position:sticky;left:0;background:#fff;padding:6px 10px;">
             <div style="font-size:12.5px;font-weight:600;color:#2b3138;">${esc(w.name)}</div>
-            <div style="font-size:10px;color:#9aa3ac;">${esc(w.id)}</div>
+            <div style="font-size:10px;color:#9aa3ac;">${esc(w.dept)} · ${esc(w.subOrg||'')}</div>
           </td>
           ${state.ppeTypes.map(t => {
             const r = c.curByKey[w.id+'|'+t.id];
@@ -1199,6 +1299,7 @@ function renderDept() {
       </tbody>
     </table>
   </div>`}
+  </div>
 </div>`;
 }
 
@@ -1481,11 +1582,33 @@ function bindPersonalEvents() {
   document.querySelectorAll('.worker-item[data-worker-id]').forEach(el => {
     el.addEventListener('click', () => { state.selectedWorkerId = el.dataset.workerId; renderScreen(); });
   });
+  // Excel upload
+  document.getElementById('xls-upload')?.addEventListener('change', handleXlsUpload);
+  document.getElementById('btn-xls-clear')?.addEventListener('click', () => {
+    state.xlsRecords = []; state.xlsWorkers = []; state.xlsFileName = '';
+    state.selectedWorkerId = state.workers.length > 0 ? state.workers[0].id : null;
+    renderScreen(); showToast('Excel 데이터를 초기화했습니다. Firestore 데이터로 전환됩니다.');
+  });
+  document.getElementById('btn-xls-template')?.addEventListener('click', ev => {
+    ev.preventDefault(); downloadXlsTemplate();
+  });
 }
 
 function bindDeptEvents() {
-  document.querySelectorAll('.tab-item[data-dept-tab]').forEach(el => {
-    el.addEventListener('click', () => { state.deptTab = el.dataset.deptTab; renderScreen(); });
+  document.getElementById('dept-sel-factory')?.addEventListener('change', ev => {
+    state.deptSelFactory = ev.target.value;
+    state.deptSelDept = 'all';
+    state.deptSelSubOrg = 'all';
+    renderScreen();
+  });
+  document.getElementById('dept-sel-dept')?.addEventListener('change', ev => {
+    state.deptSelDept = ev.target.value;
+    state.deptSelSubOrg = 'all';
+    renderScreen();
+  });
+  document.getElementById('dept-sel-suborg')?.addEventListener('change', ev => {
+    state.deptSelSubOrg = ev.target.value;
+    renderScreen();
   });
   document.getElementById('btn-export')?.addEventListener('click', () => {
     showToast('부서별 지급대장 엑셀을 생성했습니다. (데모)');
@@ -1552,6 +1675,98 @@ function bindSettingsEvents() {
   document.getElementById('btn-simulate')?.addEventListener('click', addShipment);
   document.getElementById('btn-import-ppe')?.addEventListener('click', importPpeTypes);
   document.getElementById('btn-import-workers')?.addEventListener('click', importWorkers);
+}
+
+// ─── Excel upload (fallback, local-only) ─────────────────────────────────────
+function handleXlsUpload(ev) {
+  const file = ev.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'binary', cellDates: true });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+      if (rows.length < 2) { showToast('데이터 행이 없습니다.'); return; }
+
+      // Detect header row (find row containing 사번 or 성명)
+      let hdrIdx = 0;
+      for (let i = 0; i < Math.min(5, rows.length); i++) {
+        if (rows[i].some(c => String(c).includes('사번') || String(c).includes('성명'))) { hdrIdx = i; break; }
+      }
+      const hdr = rows[hdrIdx].map(c => String(c).trim());
+      const col = name => {
+        const syns = { '사번':['사번','사원번호','EMP_ID','empId'],
+                       '성명':['성명','이름','name','작업자'],
+                       '공장':['공장','factory'],
+                       '부서':['부서','부서명','dept'],
+                       '하위조직':['하위조직','공정','subOrg','팀','조직'],
+                       '보호구':['보호구','보호구종류','보호구명','PPE','종류'],
+                       '지급일':['지급일','지급날짜','issueDate','최근지급일'],
+                       '수량':['수량','qty','개수'],
+                       '만료예정일':['만료예정일','만료일','expiryDate','교체예정일'],
+                       '출고번호':['출고번호','outNo','출고No'] }[name] || [name];
+        return hdr.findIndex(h => syns.some(s => h.includes(s)));
+      };
+      const ci = { 사번:col('사번'), 성명:col('성명'), 공장:col('공장'), 부서:col('부서'),
+                   하위조직:col('하위조직'), 보호구:col('보호구'), 지급일:col('지급일'),
+                   수량:col('수량'), 만료예정일:col('만료예정일'), 출고번호:col('출고번호') };
+
+      const workers = {}, records = [];
+      for (let i = hdrIdx + 1; i < rows.length; i++) {
+        const r = rows[i];
+        const empId = String(r[ci.사번]||'').trim();
+        const name  = String(r[ci.성명]||'').trim();
+        if (!empId || !name) continue;
+        const ppe   = String(r[ci.보호구]||'').trim();
+        if (!ppe) continue;
+        if (!workers[empId]) {
+          workers[empId] = {
+            id: empId, employeeId: empId, name,
+            factory: ci.공장>=0 ? String(r[ci.공장]||'').trim() : '',
+            dept:    ci.부서>=0 ? String(r[ci.부서]||'').trim() : '',
+            subOrg:  ci.하위조직>=0 ? String(r[ci.하위조직]||'').trim() : '',
+          };
+        }
+        const rawIssue  = r[ci.지급일];
+        const rawExpiry = ci.만료예정일>=0 ? r[ci.만료예정일] : '';
+        const issueDate  = rawIssue  instanceof Date ? fmtDate(rawIssue)  : String(rawIssue||'').trim();
+        const expiryDate = rawExpiry instanceof Date ? fmtDate(rawExpiry) : String(rawExpiry||'').trim();
+        records.push({
+          workerId:   empId,
+          typeName:   ppe,
+          issueDate:  issueDate,
+          expiryDate: expiryDate || '',
+          qty:        ci.수량>=0 ? (r[ci.수량]||1) : 1,
+          outNo:      ci.출고번호>=0 ? String(r[ci.출고번호]||'').trim() : '',
+        });
+      }
+      state.xlsWorkers  = Object.values(workers);
+      state.xlsRecords  = records;
+      state.xlsFileName = file.name;
+      // select first worker from xls
+      if (state.xlsWorkers.length > 0) state.selectedWorkerId = state.xlsWorkers[0].id;
+      renderScreen();
+      showToast(`Excel 로드 완료 — 작업자 ${state.xlsWorkers.length}명, 지급이력 ${records.length}건`);
+    } catch(err) {
+      showToast('Excel 파싱 오류: ' + err.message);
+    }
+    ev.target.value = '';
+  };
+  reader.readAsBinaryString(file);
+}
+
+function downloadXlsTemplate() {
+  if (typeof XLSX === 'undefined') { showToast('SheetJS 라이브러리가 로드되지 않았습니다.'); return; }
+  const ws = XLSX.utils.aoa_to_sheet([
+    ['사번','성명','공장','부서','하위조직','보호구종류','지급일','수량','만료예정일','출고번호'],
+    ['199911098','홍길동','PVC공장','PVC생산1팀','사무실','안전모','2024-01-15','1','2026-01-15','OUT-20240115-001'],
+    ['199911098','홍길동','PVC공장','PVC생산1팀','사무실','안전화','2024-01-15','1','','OUT-20240115-002'],
+  ]);
+  ws['!cols'] = [10,10,10,14,12,16,12,6,14,18].map(w=>({wch:w}));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '지급대장');
+  XLSX.writeFile(wb, 'PPE지급대장_업로드양식.xlsx');
 }
 
 // ─── Firestore write: bulk import PPE types ──────────────────────────────────
