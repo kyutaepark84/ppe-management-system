@@ -868,8 +868,14 @@ function deriveXls(r) {
 
 function derive(r) {
   const TODAY = today();
-  const t = state.ppeTypes.find(x => x.id === r.typeId) || { id:r.typeId, name:r.typeId, months:12, alarmDays:14, lifeType:'기간형' };
-  const w = state.workers.find(x => x.id === r.workerId) || { id:r.workerId, name:'-', dept:'-', factory:'-', subOrg:'-' };
+  // typeId → name fallback: 재등록 등으로 ID가 변경됐을 때 저장된 typeName으로 복구
+  let t = state.ppeTypes.find(x => x.id === r.typeId);
+  if (!t && r.typeName) t = state.ppeTypes.find(x => x.name === r.typeName);
+  if (!t) t = { id:r.typeId, name: r.typeName || '알 수 없음', months:12, alarmDays:14, lifeType:'기간형' };
+  // workerId → employeeId fallback: 재등록으로 ID 변경됐을 때 저장된 employeeId로 복구
+  let w = state.workers.find(x => x.id === r.workerId);
+  if (!w && r.workerEmpId) w = state.workers.find(x => x.employeeId === r.workerEmpId || x.id === r.workerEmpId);
+  if (!w) w = { id:r.workerId, name:'-', dept:'-', factory:'-', subOrg:'-' };
   const issue = new Date(r.issueDate);
   const isPerf = t.lifeType === '성능소진형' || t.months === 0;
   if (isPerf) {
@@ -1688,7 +1694,9 @@ const masterDebounce = {};
 function bindMasterEvents() {
   document.getElementById('btn-add-type')?.addEventListener('click', async () => {
     try {
-      await addDoc(collection(db, 'ppeTypes'), { name:'새 보호구', months:12, alarmDays:14, note:'' });
+      // 이름 기반 ID: 중복 방지를 위해 타임스탬프 suffix 추가
+      const newId = '새보호구_' + Date.now();
+      await setDoc(doc(db, 'ppeTypes', newId), { name:'새 보호구', months:12, alarmDays:14, lifeType:'기간형', note:'' });
       showToast('보호구 기준 행을 추가했습니다. (Firestore 저장됨)');
     } catch (err) { showToast('추가 실패: '+err.message); }
   });
@@ -1987,12 +1995,14 @@ async function commitBulkRecords() {
     const isoNow = new Date().toISOString();
     for (const r of toWrite) {
       batchInst.set(doc(collection(db,'records')), {
-        workerId:   r.workerId,
-        typeId:     r.typeId,
-        qty:        r.qty,
-        issueDate:  r.issueDate,
-        outNo:      r.outNo || ('BULK-'+r.issueDate+'-'+String(++written).padStart(3,'0')),
-        createdAt:  isoNow,
+        workerId:    r.workerId,
+        workerEmpId: r.empId || '',       // employeeId 별도 저장 (재등록 후 복구용)
+        typeId:      r.typeId,
+        typeName:    r.typeName || '',    // PPE 이름 별도 저장 (재등록 후 복구용)
+        qty:         r.qty,
+        issueDate:   r.issueDate,
+        outNo:       r.outNo || ('BULK-'+r.issueDate+'-'+String(++written).padStart(3,'0')),
+        createdAt:   isoNow,
       });
       opCount++; written++;
       if (opCount===BATCH) {
@@ -2104,7 +2114,8 @@ async function importPpeTypes() {
     prog.textContent = '② 법정 기준 15종 등록 중...';
     const batch2 = writeBatch(db);
     PPE_SEED_DATA.forEach(p => {
-      batch2.set(doc(collection(db, 'ppeTypes')), {
+      // 문서 ID = 보호구 이름 → 재등록해도 동일 ID 유지 (기존 records.typeId 연결 보존)
+      batch2.set(doc(db, 'ppeTypes', p.name), {
         name:       p.name,
         months:     p.months,
         lifeType:   p.lifeType,
@@ -2163,7 +2174,8 @@ async function importWorkers() {
     batch = writeBatch(db);
     opCount = 0;
     for (const w of WORKER_SEED_DATA) {
-      const ref = doc(collection(db, 'workers'));
+      // 문서 ID = 사번(employeeId) → 재등록해도 동일 ID 유지 (기존 records.workerId 연결 보존)
+      const ref = doc(db, 'workers', String(w.e));
       batch.set(ref, {
         factory:    w.f,
         dept:       w.d,
