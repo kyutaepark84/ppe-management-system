@@ -1970,16 +1970,25 @@ function downloadBulkRecordsTemplate() {
   XLSX.utils.sheet_add_aoa(ws1,[
     [''],
     ['※ 안내'],
-    ['• 사번: 아래 "전체 작업자 목록" 시트의 사번을 복사해서 사용하세요.'],
+    ['• 사번: 아래 "작업자목록" 시트의 사번을 복사해서 사용하세요.'],
     ['• 보호구종류: '+ppeNames.join(' / ')],
     ['• 지급일 형식: YYYY-MM-DD (예: 2025-01-15)'],
     ['• 출고번호가 없으면 자동 생성됩니다.'],
   ],{origin:{r:5,c:0}});
 
   // ── Sheet 2: 전체 작업자 목록 ─────────────────────────────────────────────
+  // Firestore workers 우선, 없으면 내장 시드 데이터(479명) 사용
+  let workerSource = state.workers;
+  let usingFallback = false;
+  if (!workerSource || workerSource.length === 0) {
+    // WORKER_SEED_DATA: {f:공장, d:부서, s:하위조직, n:성명, e:사번}
+    workerSource = WORKER_SEED_DATA.map(w => ({
+      employeeId: w.e, name: w.n, factory: w.f, dept: w.d, subOrg: w.s
+    }));
+    usingFallback = true;
+  }
   const workerRows = [['사번','성명','공장','부서','하위조직']];
-  // sort by factory → dept → subOrg → name
-  const sorted = [...state.workers].sort((a,b)=>{
+  const sorted = [...workerSource].sort((a,b)=>{
     const fa=a.factory||'', fb=b.factory||'';
     if (fa!==fb) return fa<fb?-1:1;
     const da=a.dept||'', db=b.dept||'';
@@ -1989,7 +1998,7 @@ function downloadBulkRecordsTemplate() {
     return (a.name||'')<(b.name||'')?-1:1;
   });
   sorted.forEach(w => workerRows.push([
-    w.employeeId||w.id||'', w.name||'', w.factory||'', w.dept||'', w.subOrg||''
+    String(w.employeeId||w.id||''), w.name||'', w.factory||'', w.dept||'', w.subOrg||''
   ]));
   const ws2 = XLSX.utils.aoa_to_sheet(workerRows);
   ws2['!cols']=[{wch:14},{wch:10},{wch:12},{wch:16},{wch:16}];
@@ -1997,9 +2006,12 @@ function downloadBulkRecordsTemplate() {
   // ── 워크북 조립 ──────────────────────────────────────────────────────────
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws1, '지급내역업로드');
-  XLSX.utils.book_append_sheet(wb, ws2, '전체 작업자 목록');
+  XLSX.utils.book_append_sheet(wb, ws2, '작업자목록');
   XLSX.writeFile(wb, 'PPE지급내역_일괄업로드양식.xlsx');
-  showToast(`양식 다운로드 완료 — 작업자 ${sorted.length}명 포함`);
+  const msg = usingFallback
+    ? `양식 다운로드 완료 — 내장 작업자 ${sorted.length}명 포함 (Firestore 미등록 상태)`
+    : `양식 다운로드 완료 — 작업자 ${sorted.length}명 포함`;
+  showToast(msg);
 }
 
 // ─── Firestore write: bulk import PPE types ──────────────────────────────────
